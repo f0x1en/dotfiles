@@ -131,27 +131,40 @@ zle -N zle-line-init
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
+# nvim
+alias vim='nvim'
+alias v='nvim'
+# vim
+alias vimm='vim'
+
+# prime-run
 alias nvrun="__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia"
 
+# scrcpy
 alias phone='scrcpy -Sw --always-on-top -m1920 --max-fps=60'
+alias phone-on='nohup scrcpy -Sw --always-on-top -m1920 --max-fps=60 >/home/user/.local/state/phone.log 2>&1 & disown %+'
+alias phone-off='pkill -f "scrcpy -Sw"'
 
-alias vim='nvim'
-
+# omniroute
 alias omniroute-on='nohup omniroute >/home/user/.local/state/omniroute.log 2>&1 & disown %+'
 alias omniroute-off='pkill -f omniroute'
 
-# bare git
+# bare git .cfg
+# .zshrc
+# .tmux.conf
+# .config/nvim
+# .config/kitty
 alias config='git --git-dir="$HOME/.cfg" --work-tree="$HOME"'
 
 # opencode
-# User binaries
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
+# set editor nvim
 export EDITOR=nvim
 export VISUAL=nvim
 
 # z
 eval "$(zoxide init zsh)"
 
-# secrets
+# isolate secrets
 [ -f "$HOME/.zshrc.local" ] && . "$HOME/.zshrc.local"
