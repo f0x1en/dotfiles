@@ -76,6 +76,16 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
+# objects for y
+autoload -U select-quoted
+zle -N select-quoted
+
+for m in visual viopp; do
+    for c in {a,i}{\',\",\`}; do
+        bindkey -M $m $c select-quoted
+    done
+done
+
 # Native Zsh vi mode
 bindkey -v
 
@@ -103,6 +113,25 @@ function zle-line-init {
 
 zle -N zle-keymap-select
 zle -N zle-line-init
+
+# Paste system clipboard before cursor
+paste-clipboard() {
+    CUTBUFFER=$(wl-paste --no-newline) || return
+    zle .vi-put-before
+}
+
+zle -N paste-clipboard
+bindkey -M vicmd p paste-clipboard
+bindkey -M vicmd P paste-clipboard
+
+# Yank to system clipboard
+yank-clipboard() {
+    zle .vi-yank
+    print -rn -- "$CUTBUFFER" | wl-copy
+}
+
+zle -N yank-clipboard
+bindkey -M vicmd y yank-clipboard
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
@@ -155,6 +184,9 @@ alias omniroute-off='pkill -f omniroute'
 # .config/nvim
 # .config/kitty
 alias config='git --git-dir="$HOME/.cfg" --work-tree="$HOME"'
+
+# clipboard history
+alias ch='cliphist list | fzf --no-sort --bind "j:down,k:up" | cliphist decode | wl-copy'
 
 # opencode
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
