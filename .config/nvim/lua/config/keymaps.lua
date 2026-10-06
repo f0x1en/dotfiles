@@ -1,4 +1,6 @@
 vim.keymap.set("i", "jk", "<Esc>", { desc = "Escape" })
+vim.keymap.set("n", "j", "gj")
+vim.keymap.set("n", "k", "gk")
 
 -- System clipboard: explicit linewise paste
 local function paste_linewise(reg, after)
