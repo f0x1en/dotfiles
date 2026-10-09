@@ -76,7 +76,8 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
-# objects for y
+# objects
+# i, a; ', ", `;
 autoload -U select-quoted
 zle -N select-quoted
 
@@ -99,16 +100,17 @@ bindkey -M viins '^R' history-incremental-pattern-search-backward
 function zle-keymap-select {
     case $KEYMAP in
         vicmd)
-            print -n '\e[2 q'   # block
+            print -n '\e[2 q'
             ;;
         *)
-            print -n '\e[6 q'   # beam
+            print -n '\e[6 q'
             ;;
     esac
 }
 
 function zle-line-init {
-    print -n '\e[6 q'   # beam
+    zle -K vicmd
+    print -n '\e[2 q'
 }
 
 zle -N zle-keymap-select
@@ -132,6 +134,12 @@ yank-clipboard() {
 
 zle -N yank-clipboard
 bindkey -M vicmd y yank-clipboard
+
+# Copy command output to clipboard
+# c <command>
+c() {
+    "$@" 2>&1 | tee >(wl-copy)
+}
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
