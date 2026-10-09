@@ -1,0 +1,7 @@
+set statusbar-h-padding 0
+set statusbar-v-padding 0
+set selection-clipboard clipboard
+set recolor true
+set recolor-darkcolor "#cdd6f4"
+set recolor-lightcolor "#1e1e2e"
+set open-first-page true

@@ -1,0 +1,31 @@
+#!/bin/sh
+
+choice=$(printf '%s\n' \
+    'Lock' \
+    'Sleep' \
+    'Hibernate' \
+    'Logout' \
+    'Reboot' \
+    'Shutdown' |
+    fuzzel --dmenu --prompt='Power: ')
+
+case "$choice" in
+    Lock)
+        swaylock
+        ;;
+    Sleep)
+        systemctl suspend
+        ;;
+    Hibernate)
+        systemctl hibernate
+        ;;
+    Logout)
+        swaymsg exit
+        ;;
+    Reboot)
+        systemctl reboot
+        ;;
+    Shutdown)
+        systemctl poweroff
+        ;;
+esac

@@ -1,0 +1,2 @@
+[names]
+endpoint = [ "{node:node.nick}", "{node:node.description}", "{device:device.nick}", "{device:device.description}" ]
