@@ -178,8 +178,8 @@ alias vimm='vim'
 alias nvrun="__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia"
 
 # scrcpy
-alias phone='scrcpy -Sw --always-on-top -m1920 --max-fps=60'
-alias phone-on='nohup scrcpy -Sw --always-on-top -m1920 --max-fps=60 >/home/user/.local/state/phone.log 2>&1 & disown %+'
+alias phone='scrcpy -Sw -m1920 --max-fps=60'
+alias phone-on='nohup scrcpy -Sw -m1920 --max-fps=60 >/home/user/.local/state/phone.log 2>&1 & disown %+'
 alias phone-off='pkill -f "scrcpy -Sw"'
 
 # omniroute
