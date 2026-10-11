@@ -74,6 +74,9 @@ bindsym $mod+F3 exec wpctl set-volume @DEFAULT_SINK@ 5%+
 bindsym $mod+F4 exec wpctl set-mute @DEFAULT_SOURCE@ toggle
 bindsym $mod+F5 exec brightnessctl set 5%-
 bindsym $mod+F6 exec brightnessctl set 5%+
+## cmus
+bindsym  XF86AudioPrev exec cmus-remote -r
+bindsym  XF86AudioNext exec cmus-remote -n
 
 # Disable focus on mouse hover
 focus_follows_mouse no
@@ -112,8 +115,8 @@ bindsym $mod+Ctrl+l resize shrink width 10 px
 ### Layout
 
 # Split direction
-bindsym $mod+b splith
-bindsym $mod+v splitv
+bindsym $mod+b splitv
+bindsym $mod+v splith
 
 # Fullscreen
 bindsym $mod+f fullscreen

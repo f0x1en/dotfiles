@@ -81,3 +81,8 @@ end, { desc = "Paste clipboard above" })
 vim.keymap.set("n", "<leader>r", function()
   vim.opt.relativenumber = not vim.opt.relativenumber:get()
 end, { desc = "Toggle relative numbers" })
+
+-- Toggle line wrap
+vim.keymap.set("n", "<leader>uw", "<cmd>set wrap!<CR>", {
+  desc = "Toggle line wrap",
+})

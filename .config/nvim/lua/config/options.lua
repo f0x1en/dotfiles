@@ -5,7 +5,7 @@ vim.opt.relativenumber = true
 -- use system clipboard
 vim.opt.clipboard = "unnamedplus"
 -- wrap around lines
-vim.opt.wrap = true
+vim.opt.wrap = false
 vim.opt.whichwrap = "b,s,<,>,[,],h,l"
 -- disable auto prefix on new line
 vim.api.nvim_create_autocmd("FileType", {
