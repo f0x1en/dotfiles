@@ -116,6 +116,14 @@ function zle-line-init {
 zle -N zle-keymap-select
 zle -N zle-line-init
 
+# route reels through proxy
+reels() {
+    ALL_PROXY=socks5h://127.0.0.1:10808 \
+    HTTP_PROXY=socks5h://127.0.0.1:10808 \
+    HTTPS_PROXY=socks5h://127.0.0.1:10808 \
+    /home/user/.local/lib/npm/bin/reels "$@"
+}
+
 # Paste system clipboard before cursor
 paste-clipboard() {
     CUTBUFFER=$(wl-paste --no-newline) || return
@@ -208,3 +216,5 @@ eval "$(zoxide init zsh)"
 
 # isolate secrets
 [ -f "$HOME/.zshrc.local" ] && . "$HOME/.zshrc.local"
+
+export PATH="$HOME/.local/lib/npm/bin:$PATH"

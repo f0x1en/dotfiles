@@ -67,8 +67,19 @@ input type:keyboard {
     xkb_layout "us,ir"
     xkb_options "grp:win_space_toggle"
 }
+# Screenshot selected region and copy it to clipboard
+bindsym $mod+Print exec grim -g "$(slurp)" - | wl-copy
+## tele
+bindsym $mod+t exec kitty --title tele tele
 
 ### Workspaces
+
+# bottom panes bar
+bar {
+    position bottom
+    workspace_buttons yes
+    strip_workspace_numbers no
+}
 
 # Switch
 bindsym $mod+1 workspace number 1
@@ -100,6 +111,8 @@ bindsym $mod+Ctrl+l resize shrink width 10 px
 
 # Disable focus on mouse hover
 focus_follows_mouse no
+# Default split direction
+default_orientation horizontal
 # Split direction
 bindsym $mod+b splitv
 bindsym $mod+v splith
