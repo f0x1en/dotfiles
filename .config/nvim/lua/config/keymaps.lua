@@ -86,3 +86,5 @@ end, { desc = "Toggle relative numbers" })
 vim.keymap.set("n", "<leader>uw", "<cmd>set wrap!<CR>", {
   desc = "Toggle line wrap",
 })
+-- Clear search highlights
+vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Clear search highlighting" })
