@@ -84,6 +84,7 @@ bar {
     position bottom
     workspace_buttons yes
     strip_workspace_numbers no
+    status_command ~/.config/sway/scripts/sway-clock
 }
 
 # Switch
