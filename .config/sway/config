@@ -14,7 +14,7 @@ exec_always pkill -x kanshi; exec /usr/bin/kanshi
 # Clipboard
 exec wl-paste --watch cliphist store
 # v2rayn
-assign [class="v2rayN"] workspace number 9
+assign [class="v2rayN"] workspace number 5
 exec /usr/bin/v2rayn
 
 ### Key bindings
