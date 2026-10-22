@@ -3,7 +3,7 @@
 set $mod Mod4
 set $term kitty
 set $menu fuzzel
-set $browser qutebrowser
+set $browser firefox-esr
 
 ### Startup
 
@@ -11,9 +11,11 @@ set $browser qutebrowser
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
 # Monitor
 exec_always pkill -x kanshi; exec /usr/bin/kanshi
+# status bar
+exec_always sh -c 'pkill -x waybar 2>/dev/null; exec waybar'
 # Notifications
 exec mako
-# kde connect phone
+# kdeconnect phone
 exec /usr/bin/kdeconnectd
 # Clipboard
 exec wl-paste --watch cliphist store
@@ -71,8 +73,9 @@ bindsym $mod+F6 exec brightnessctl set 5%+
 ## yazi
 bindsym $mod+e exec kitty --title files yazi
 ## cmus
-bindsym  XF86AudioPrev exec cmus-remote -r
-bindsym  XF86AudioNext exec cmus-remote -n
+bindsym  $mod+F7 exec cmus-remote -r
+bindsym  $mod+F8 exec cmus-remote -u
+bindsym  $mod+F9 exec cmus-remote -n
 # change keyboard layout
 input type:keyboard {
     xkb_layout "us,ir"
@@ -84,14 +87,6 @@ bindsym $mod+Print exec grim -g "$(slurp)" - | wl-copy
 bindsym $mod+t exec kitty --title tele tele
 
 ### Workspaces
-
-# bottom panes bar
-bar {
-    position bottom
-    workspace_buttons yes
-    strip_workspace_numbers no
-    status_command ~/.config/sway/scripts/sway-clock
-}
 
 # Switch
 bindsym $mod+1 workspace number 1

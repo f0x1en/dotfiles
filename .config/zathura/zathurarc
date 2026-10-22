@@ -1,7 +1,18 @@
-set statusbar-h-padding 0
-set statusbar-v-padding 0
-set selection-clipboard clipboard
+# Muted Campbell
+set default-bg "#0C0C0C"
+set default-fg "#CCCCCC"
+
+# Status and input bars
+set statusbar-bg "#0C0C0C"
+set statusbar-fg "#CCCCCC"
+set inputbar-bg "#0C0C0C"
+set inputbar-fg "#CCCCCC"
+
+# PDF dark mode
+set recolor-lightcolor "#0C0C0C"
+set recolor-darkcolor "#CCCCCC"
 set recolor true
-set recolor-darkcolor "#cdd6f4"
-set recolor-lightcolor "#1e1e2e"
-set open-first-page true
+set recolor-keephue true
+
+# Toggle PDF recoloring
+map <C-r> recolor
