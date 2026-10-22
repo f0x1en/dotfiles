@@ -153,3 +153,32 @@ Configurations are managed in place in `$HOME`; no symlinks are required.
 - Display profiles are managed by kanshi.
 - Yazi uses Kitty's graphics protocol for image previews.
 - Review the configurations before using them on another system.
+
+## Quick setup on Debian
+
+These dotfiles configure a keyboard-driven desktop based on Sway. The installer
+installs packages listed in `packages/debian.txt` and checks out tracked
+configuration files into their normal locations under your home directory.
+
+### Fresh installation
+
+Install Git and curl first:
+
+```sh
+sudo apt-get update
+sudo apt-get install git curl ca-certificates
+```
+
+Download and run the installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/f0x1en/dotfiles/main/install.sh -o /tmp/dotfiles-install.sh
+sh /tmp/dotfiles-install.sh
+```
+
+Review `packages/debian.txt` before installing if you want to change the package
+selection. Existing conflicting configuration files are backed up under
+`~/.dotfiles-backup-TIMESTAMP` before checkout.
+
+The installer does not run `apt autoremove` or configure API keys and other
+secrets. After setup, log out and select Sway at the login screen.
