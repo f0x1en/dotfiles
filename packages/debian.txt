@@ -1,0 +1,30 @@
+# Sway desktop
+sway
+swaylock
+swayidle
+waybar
+kanshi
+fuzzel
+kitty
+
+# Shell and terminal tools
+zsh
+neovim
+tmux
+
+# File management and media
+yazi
+zathura
+mpv
+
+# Wayland utilities
+wl-clipboard
+cliphist
+grim
+slurp
+brightnessctl
+playerctl
+
+# Connectivity
+network-manager
+bluez
