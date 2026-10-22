@@ -1,0 +1,44 @@
+#!/bin/sh
+
+cat <<'HELP' | less -R
+ WINDOWS
+  Super + h/j/k/l       Focus window
+  Super + Shift + hjkl  Move window
+  Super + Ctrl + hjkl   Resize window
+  Super + Shift + q     Close window
+  Super + Shift + Space Toggle floating
+  Super + f              Fullscreen
+
+ LAYOUT
+  Super + b              Split horizontally
+  Super + v              Split vertically
+
+ WORKSPACES
+  Super + 1–9            Switch workspace
+  Super + Shift + 1–9    Move window to workspace
+
+ APPS & TOOLS
+  Super + Return         Terminal
+  Super + x              Run a command
+  Super + /              This help menu
+  Super + d              App launcher
+  Super + c              Clipboard history
+  Super + Shift + n      Network
+  Super + Shift + b      Bluetooth
+  Super + Shift + a      Audio mixer
+
+ HARDWARE
+  Super + F1             Mute/unmute audio
+  Super + F2 / F3        Volume down/up
+  Super + F4             Mute/unmute microphone
+  Super + F5 / F6        Brightness down/up
+
+ SYSTEM
+  Super + Escape         Lock screen
+  Super + Shift + p      Power menu
+  Super + Shift + c      Reload Sway
+  Super + Shift + e      Exit Sway
+
+ ─────────────────────────────────────
+  j/k  Scroll    g/G  Top/bottom    q  Close
+HELP

@@ -8,11 +8,21 @@ Personal Linux dotfiles for a minimal, keyboard-driven environment built around 
 |---|---|
 | OS | Debian Linux |
 | Window manager | Sway |
+| Status bar | Waybar |
+| Display profiles | kanshi |
 | Terminal | Kitty |
 | Shell | Zsh + Oh My Zsh |
 | Editor | Neovim + lazy.nvim |
 | Terminal multiplexer | tmux |
 | Launcher | Fuzzel |
+| File manager | Yazi |
+| PDF viewer | Zathura |
+| Browser | Firefox |
+| Media player | mpv |
+| Audio mixer | Wiremix |
+| Bluetooth TUI | bluetui |
+| Network TUI | wlctl |
+| Clipboard | wl-clipboard + cliphist |
 | File manager | Yazi |
 | PDF viewer | Zathura |
 | Image viewer | imv-wayland |

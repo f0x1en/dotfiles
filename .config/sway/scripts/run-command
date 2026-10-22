@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cmd=$(printf '' | fuzzel --dmenu --prompt='Run: ') || exit 0
+[ -n "$cmd" ] || exit 0
+
+nohup zsh -ic "$cmd" >>"$HOME/.local/state/sway-command.log" 2>&1 </dev/null &

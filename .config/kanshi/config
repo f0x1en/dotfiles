@@ -1,0 +1,10 @@
+# Laptop only
+profile laptop {
+    output eDP-1 enable
+}
+
+# External monitor connected
+profile external {
+    output HDMI-A-1 enable mode 1920x1080@60Hz
+    output eDP-1 disable
+}
