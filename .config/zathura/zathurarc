@@ -16,3 +16,6 @@ set recolor-keephue true
 
 # Toggle PDF recoloring
 map <C-r> recolor
+
+# Copy to system clipboard
+set selection-clipboard clipboard
