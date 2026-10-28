@@ -91,8 +91,8 @@ bindkey -M vicmd y yank-clipboard
 # L in normal mode: list the current directory
 list-dir() {
     zle -I
-    ll
-    zle reset-prompt
+    { ls -l --color=auto --classify; echo; } > /dev/tty
+    zle redisplay
 }
 zle -N list-dir
 bindkey -M vicmd L list-dir
@@ -196,3 +196,4 @@ eval "$(zoxide init zsh)"
 if [[ -f "$HOME/.zshrc.local" ]]; then
     source "$HOME/.zshrc.local"
 fi
+export PATH="$HOME/.local/bin:$PATH"
