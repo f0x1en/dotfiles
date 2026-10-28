@@ -73,6 +73,7 @@ bindsym $mod+F6 exec brightnessctl set 5%+
 ## yazi
 bindsym $mod+e exec kitty --title files yazi
 ## cmus
+bindsym  $mod+m  exec kitty cmus
 bindsym  $mod+F7 exec cmus-remote -r
 bindsym  $mod+F8 exec cmus-remote -u
 bindsym  $mod+F9 exec cmus-remote -n

@@ -1,0 +1,5 @@
+#!/bin/sh
+exec /usr/bin/aria2c \
+  --conf-path="$HOME/.config/aria2/aria2.conf" \
+  --input-file="$HOME/Downloads/batches/urls.txt" \
+  --max-concurrent-downloads=3

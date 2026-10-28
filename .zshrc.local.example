@@ -1,0 +1,6 @@
+# Copy this file to ~/.zshrc.local and fill in your own values.
+# ~/.zshrc.local is gitignored and sourced at the end of ~/.zshrc.
+
+# export OPENAI_API_KEY=""
+# export ANTHROPIC_API_KEY=""
+# export GEMINI_API_KEY=""

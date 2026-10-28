@@ -1,21 +1,53 @@
+# Base utilities used by the installer and shell
+git
+gh
+git-delta
+curl
+ca-certificates
+unzip
+build-essential
+less
+ncurses-term
+xdg-utils
+desktop-file-utils
+shared-mime-info
+iproute2
+
 # Sway desktop
 sway
-swaylock
+swaybg
 swayidle
+swaylock
 waybar
 kanshi
 fuzzel
 kitty
+mako-notifier
+xdg-desktop-portal-wlr
 
 # Shell and terminal tools
 zsh
 neovim
 tmux
+fzf
+zoxide
+jq
+ripgrep
+fd-find
+tree-sitter-cli
 
 # File management and media
 yazi
+ffmpeg
+7zip
+poppler-utils
 zathura
+zathura-pdf-poppler
 mpv
+imv
+cmus
+playerctl
+mousepad
 
 # Wayland utilities
 wl-clipboard
@@ -23,8 +55,42 @@ cliphist
 grim
 slurp
 brightnessctl
-playerctl
+
+# Audio
+pipewire
+pipewire-audio
+wireplumber
 
 # Connectivity
 network-manager
 bluez
+kdeconnect
+
+# Browser
+firefox-esr
+
+# Android / phone helpers
+scrcpy
+adb
+
+# Document toolchain used by mdpdf
+pandoc
+texlive-xetex
+texlive-lang-arabic
+fonts-hosny-amiri
+
+# RISC-V helpers used by rv
+gcc-riscv64-linux-gnu
+qemu-user
+
+# Fonts and CLI extras
+fontconfig
+fonts-inter
+fonts-jetbrains-mono
+fonts-vazirmatn
+fonts-noto-core
+fonts-noto-color-emoji
+btop
+tealdeer
+broot
+aria2

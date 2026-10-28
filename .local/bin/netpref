@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""netpref - NetworkManager routing-preference utility.
+
+Usage:
+    netpref wifi|tether|lan|default|status
+
+Persists preference across NetworkManager reconnect events via dispatcher hook.
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+STATE_FILE = Path.home() / ".local/state/netpref"
+WIFI = "wlp0s20f3"
+LAN = "enp2s0"
+
+PRIORITY = {
+    "wifi":   {WIFI: 50,  "tether": 600, LAN: 700},
+    "tether": {WIFI: 100, "tether": 50,  LAN: 700},
+    "lan":    {WIFI: 100, "tether": 700, LAN: 50},
+}
+
+
+def run(cmd, check=False):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if check and r.returncode != 0:
+        raise RuntimeError(f"{' '.join(cmd)}: {r.stderr.strip()}")
+    return r
+
+
+def get_tethers():
+    """Find USB tether interfaces matching enx* pattern."""
+    out = run(["nmcli", "-t", "-f", "DEVICE,TYPE", "device", "status"]).stdout
+    tethers = []
+    for line in out.strip().splitlines():
+        if ":" not in line:
+            continue
+        parts = line.split(":", 1)
+        d, t = parts[0].strip(), parts[1].strip()
+        if d.startswith("enx") and t == "ethernet":
+            tethers.append(d)
+    return tethers
+
+
+def set_metric(iface, metric):
+    """Set route metric for an interface (IPv4 + IPv6)."""
+    run([
+        "nmcli", "device", "modify", iface,
+        "ipv4.route-metric", str(metric),
+        "ipv6.route-metric", str(metric)
+    ], check=False)
+
+
+def apply_priority(mode):
+    """Apply route metrics for the selected mode."""
+    m = PRIORITY[mode]
+    # Set hard-coded interfaces
+    for iface, metric in m.items():
+        set_metric(iface, metric)
+    # Set USB tether interfaces dynamically
+    for iface in get_tethers():
+        set_metric(iface, m["tether"])
+
+
+def restore_default():
+    """Reset all metrics to auto (-1)."""
+    for iface in [WIFI, LAN] + get_tethers():
+        set_metric(iface, -1)
+
+
+def save(mode):
+    """Persist preference to state file."""
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(mode + "\n")
+
+
+def load():
+    """Load current preference from state file."""
+    if STATE_FILE.exists():
+        return STATE_FILE.read_text().strip()
+    return "default"
+
+
+def status():
+    """Return current preference and interface info."""
+    mode = load()
+    tethers = get_tethers()
+    routes = run(["ip", "route", "show", "default"], check=False).stdout.strip()
+    return {
+        "mode": mode,
+        "interfaces": {
+            "wifi": WIFI,
+            "lan": LAN,
+            "tether": tethers,
+        },
+        "default_routes": routes.splitlines(),
+    }
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: netpref <wifi|tether|lan|default|status>", file=sys.stderr)
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd in PRIORITY:
+        save(cmd)
+        apply_priority(cmd)
+        s = status()
+        s["msg"] = f"{cmd} preferred."
+        print(json.dumps(s, indent=2))
+    elif cmd == "default":
+        STATE_FILE.unlink(missing_ok=True)
+        restore_default()
+        s = status()
+        s["msg"] = "Preference disabled. NetworkManager default restored."
+        print(json.dumps(s, indent=2))
+    elif cmd == "status":
+        print(json.dumps(status(), indent=2))
+    else:
+        print(f"Unknown command: {cmd}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

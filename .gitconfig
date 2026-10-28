@@ -1,0 +1,35 @@
+[http "https://github.com"]
+	proxy = socks5h://127.0.0.1:10808
+[user]
+	name = f0x1en
+	email = f0x1en@protonmail.com
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[init]
+	defaultBranch = main
+[fetch]
+	prune = true
+[rerere]
+	enabled = true
+[merge]
+	conflictStyle = zdiff3
+[diff]
+	algorithm = histogram
+[core]
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	side-by-side = true
+	line-numbers = true
+[http]
+	proxy = socks5h://127.0.0.1:10808
+[https]
+	proxy = socks5h://127.0.0.1:10808
+[alias]
+	logg = log --oneline --graph --decorate

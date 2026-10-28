@@ -1,0 +1,9 @@
+# Copy to ~/.config/aria2/aria2.conf. The installer creates this file
+# automatically with a random RPC secret on a fresh setup.
+enable-rpc=true
+rpc-listen-all=false
+rpc-listen-port=6800
+rpc-secret=__RPC_SECRET__
+continue=true
+dir=__HOME__/Downloads
+daemon=true

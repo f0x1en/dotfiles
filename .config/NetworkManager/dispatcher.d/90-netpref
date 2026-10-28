@@ -1,0 +1,38 @@
+#!/bin/bash
+# NetworkManager dispatcher: re-apply netpref routing preference on reconnect.
+# Placed in ~/.config/NetworkManager/dispatcher.d/ so no root needed.
+# Triggered on "up" events for any device.
+
+STATE_FILE="$HOME/.local/state/netpref"
+[ -f "$STATE_FILE" ] || exit 0
+MODE=$(cat "$STATE_FILE")
+[ "$MODE" = "default" ] && exit 0
+
+WIFI="wlp0s20f3"
+LAN="enp2s0"
+
+get_tethers() {
+    nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2=="ethernet" && $1 ~ /^enx/ {print $1}'
+}
+
+set_metric() {
+    nmcli device modify "$1" ipv4.route-metric "$2" ipv6.route-metric "$2" 2>/dev/null
+}
+
+case "$MODE" in
+    wifi)
+        set_metric "$WIFI" 50
+        for i in $(get_tethers); do set_metric "$i" 600; done
+        set_metric "$LAN" 700
+        ;;
+    tether)
+        set_metric "$WIFI" 100
+        for i in $(get_tethers); do set_metric "$i" 50; done
+        set_metric "$LAN" 700
+        ;;
+    lan)
+        set_metric "$WIFI" 100
+        for i in $(get_tethers); do set_metric "$i" 700; done
+        set_metric "$LAN" 50
+        ;;
+esac

@@ -106,6 +106,23 @@ bg() {
     nohup "$@" >>"${BG_LOG:-/dev/null}" 2>&1 </dev/null &!
 }
 
+# Build and run a RISC-V Linux assembly program
+rv() {
+    local src="${1:-add.s}"
+    local out="${src:r}"
+
+    if [[ ! -f "$src" ]]; then
+        print -u2 "rv: file not found: $src"
+        return 1
+    fi
+
+    riscv64-linux-gnu-gcc \
+        -nostdlib -static -march=rv64gc \
+        -o "$out" "$src" || return
+
+    qemu-riscv64 "$out"
+}
+
 zathura() { bg zathura "$@" }
 
 mousepad() { bg mousepad "$@" }
@@ -135,6 +152,7 @@ mdpdf() {
     pandoc "$input" \
         --pdf-engine=xelatex \
         -H "$HOME/.config/pandoc/persian-header.tex" \
+        --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
         -o "$output"
 }
 
