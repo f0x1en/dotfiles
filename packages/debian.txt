@@ -27,6 +27,9 @@ libnotify-bin
 wob
 xwayland
 polkitd
+lxpolkit
+udiskie
+sddm
 xdg-desktop-portal-wlr
 
 # Shell and terminal tools

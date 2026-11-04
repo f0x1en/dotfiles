@@ -22,6 +22,9 @@ exec_always sh -c 'pkill -x waybar 2>/dev/null; exec waybar'
 exec mako
 # Volume/brightness OSD
 exec_always ~/.config/sway/scripts/wob-start
+# Auth prompts (polkit agent) and USB automount: Plasma used to do both
+exec lxpolkit
+exec udiskie --no-tray
 # kdeconnect phone
 exec /usr/bin/kdeconnectd
 # Clipboard
@@ -93,6 +96,9 @@ input type:keyboard {
 }
 # Screenshot selected region and copy it to clipboard
 bindsym $mod+Print exec grim -g "$(slurp)" - | wl-copy
+# Screenshot full screen / selected region to ~/Pictures/screenshots
+bindsym $mod+Shift+Print exec sh -c 'mkdir -p ~/Pictures/screenshots && f=~/Pictures/screenshots/$(date +%F_%H-%M-%S).png && grim "$f" && notify-send -t 2000 Screenshot "$f"'
+bindsym $mod+Ctrl+Print exec sh -c 'mkdir -p ~/Pictures/screenshots && f=~/Pictures/screenshots/$(date +%F_%H-%M-%S).png && grim -g "$(slurp)" "$f" && notify-send -t 2000 Screenshot "$f"'
 ## tele
 bindsym $mod+t exec kitty --title tele tele
 

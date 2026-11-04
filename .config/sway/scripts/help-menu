@@ -35,6 +35,9 @@ cat <<'HELP' | less -R
 
  SYSTEM
   Super + Escape         Lock screen
+  Super + Print          Screenshot region to clipboard
+  Super + Ctrl + Print   Screenshot region to file
+  Super + Shift + Print  Screenshot screen to file
   Super + Shift + p      Power menu
   Super + Shift + c      Reload Sway
   Super + Shift + e      Exit Sway
