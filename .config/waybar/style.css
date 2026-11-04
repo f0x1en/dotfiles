@@ -40,12 +40,8 @@ window#waybar {
     border-left: 1px solid #353535;
 }
 
-#backlight {
+#tray {
     border-left: none;
-}
-
-#language {
-    color: #7892B2;
 }
 
 #pulseaudio.muted, #pulseaudio.source-muted {

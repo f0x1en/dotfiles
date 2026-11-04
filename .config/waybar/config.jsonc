@@ -8,12 +8,12 @@
     ],
     "modules-center": [],
     "modules-right": [
+        "tray",
         "backlight",
         "pulseaudio",
         "sway/language",
         "custom/date",
-        "clock",
-        "tray"
+        "clock"
     ],
     "tray": {
         "icon-size": 16,
