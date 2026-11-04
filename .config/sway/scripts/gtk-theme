@@ -1,0 +1,13 @@
+#!/bin/sh
+# Apply the GTK look via gsettings (GTK apps on Wayland read these, not only settings.ini).
+# dconf is not tracked in the dotfiles repo, so sway runs this at startup.
+command -v gsettings >/dev/null 2>&1 || exit 0
+g() { gsettings set org.gnome.desktop.interface "$1" "$2"; }
+g gtk-theme    'Adwaita-dark'
+g icon-theme   'Papirus-Dark'
+g cursor-theme 'Adwaita'
+g cursor-size  24
+g font-name    'Inter 10'
+g color-scheme 'prefer-dark'
+g enable-animations false
+g cursor-blink false

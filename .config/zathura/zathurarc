@@ -1,16 +1,16 @@
 # Muted Campbell
 set default-bg "#0C0C0C"
-set default-fg "#CCCCCC"
+set default-fg "#B8B8B8"
 
 # Status and input bars
 set statusbar-bg "#0C0C0C"
-set statusbar-fg "#CCCCCC"
+set statusbar-fg "#B8B8B8"
 set inputbar-bg "#0C0C0C"
-set inputbar-fg "#CCCCCC"
+set inputbar-fg "#B8B8B8"
 
 # PDF dark mode
 set recolor-lightcolor "#0C0C0C"
-set recolor-darkcolor "#CCCCCC"
+set recolor-darkcolor "#B8B8B8"
 set recolor true
 set recolor-keephue true
 

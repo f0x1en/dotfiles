@@ -1,7 +1,10 @@
 {
     "layer": "top",
     "position": "bottom",
-    "height": 24,
+    "height": 30,
+    "margin-bottom": 6,
+    "margin-left": 8,
+    "margin-right": 8,
     "spacing": 0,
     "modules-left": [
         "sway/workspaces"
@@ -11,13 +14,14 @@
         "tray",
         "backlight",
         "pulseaudio",
+        "pulseaudio#mic",
         "sway/language",
         "custom/date",
         "clock"
     ],
     "tray": {
         "icon-size": 16,
-        "spacing": 6
+        "spacing": 8
     },
     "sway/workspaces": {
         "disable-scroll": true,
@@ -27,24 +31,29 @@
             "*": [1, 2, 3, 4, 5, 6, 7, 8, 9]
         }
     },
-    "sway/language": {
-        "format": "{shortDescription}",
-        "min-length": 2,
+    "backlight": {
+        "format": "<span color='#6B6B6B'>󰃟</span> {percent}%",
         "tooltip": false
     },
     "pulseaudio": {
-        "format": "{icon} {volume}%  {format_source}",
-        "format-muted": "󰝟 muted  {format_source}",
-        "format-source": "󰍬 {volume}%",
-        "format-source-muted": "󰍭 off",
+        "format": "<span color='#6B6B6B'>{icon}</span> {volume}%",
+        "format-muted": "<span color='#CC5F5A'>󰝟</span> <span color='#CC5F5A'>muted</span>",
         "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
         "scroll-step": 5,
         "on-click": "wpctl set-mute @DEFAULT_SINK@ toggle",
-        "on-click-right": "wpctl set-mute @DEFAULT_SOURCE@ toggle",
+        "on-click-right": "kitty --title wiremix wiremix",
         "tooltip": false
     },
-    "backlight": {
-        "format": "󰃟 {percent}%",
+    "pulseaudio#mic": {
+        "format": "{format_source}",
+        "format-source": "<span color='#6B6B6B'>󰍬</span> {volume}%",
+        "format-source-muted": "<span color='#CC5F5A'>󰍭</span> <span color='#CC5F5A'>off</span>",
+        "on-click": "wpctl set-mute @DEFAULT_SOURCE@ toggle",
+        "tooltip": false
+    },
+    "sway/language": {
+        "format": "<span color='#6B6B6B'>󰌌</span> {shortDescription}",
+        "min-length": 2,
         "tooltip": false
     },
     "custom/date": {

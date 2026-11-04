@@ -29,7 +29,7 @@ Sway, Zsh, Neovim, and Kitty.
 | Bluetooth | BlueZ + bluetui |
 | Clipboard | wl-clipboard + cliphist |
 | Brightness | brightnessctl |
-| Theme | Muted Campbell (Catppuccin-derived accents) |
+| Theme | Muted Campbell (see Palette below) |
 
 ## What is tracked
 
@@ -44,11 +44,42 @@ tree. No symlinks are used; files are managed in place.
 | Desktop | `.config/mako/`, `.config/fuzzel/`, `.config/mimeapps.list`, `.config/user-dirs.dirs` |
 | GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini`, `.config/xsettingsd/xsettingsd.conf` |
 | Editor | `.config/nvim/` |
-| CLI tools | `.config/btop/`, `.config/broot/`, `.config/tealdeer/`, `.config/yazi/`, `.config/zellij/` |
+| CLI tools | `.config/btop/`, `.config/broot/`, `.config/tealdeer/`, `.config/yazi/` |
 | Documents | `.config/pandoc/`, `.config/zathura/` |
 | Services | `.config/NetworkManager/dispatcher.d/90-netpref` |
 | Scripts | `.local/bin/clipmenu`, `.local/bin/download-batch`, `.local/bin/netpref` |
 | Setup | `install.sh`, `packages/debian.txt`, `README.md` |
+
+## Palette
+
+Campbell-style: true neutral grays plus three accents that are far apart in hue,
+so nothing is hard to tell apart. No blue or purple in the UI.
+
+| Role | Color |
+|---|---|
+| Background | `#0C0C0C` |
+| Panel | `#161616` |
+| Selection | `#333333` |
+| Border | `#2A2A2A` |
+| Focus border | `#707070` |
+| Dim text / icons | `#6B6B6B` |
+| Text | `#B8B8B8` |
+| Strong text | `#D4D4D4` |
+| **Red**: error, urgent, muted | `#CC5F5A` |
+| **Green**: success | `#7BAA62` |
+| **Amber**: warning, highlights, links | `#D1A34D` |
+
+Each accent always means the same thing in every app. nvim syntax uses only
+four colors: red keywords, green strings, amber functions, strong-gray types
+and numbers. Blue, purple and cyan exist only as quiet terminal slots in
+`.config/kitty/themes/campbell.conf` for programs like `ls`; the UI never uses them.
+
+Used by kitty, nvim, Sway, Waybar, mako, fuzzel, wob, swaylock, GTK, tmux, btop,
+fzf and zathura. The values are repeated by hand in each config.
+
+GTK uses Adwaita-dark recolored by `.config/gtk-3.0/gtk.css` and
+`.config/gtk-4.0/gtk.css`, with Papirus-Dark icons and the Adwaita cursor.
+`.config/sway/scripts/gtk-theme` sets the matching gsettings at login.
 
 ## Sway shortcuts
 
@@ -171,7 +202,7 @@ Some tools used by the configuration are not packaged in Debian:
 cargo install wiremix bluetui wlctl
 
 # Optional personal tools referenced by shell helpers and configs
-# zellij, uv, opencode, reels, omniroute, tele, tgcli, hermes
+# uv, opencode, reels, omniroute, tele, tgcli, hermes
 ```
 
 Other manual steps:

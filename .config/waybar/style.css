@@ -1,3 +1,6 @@
+/* Campbell: neutral UI, color only for state (red #CC5F5A for muted/urgent)
+   bg #0C0C0C  surface #242424  border #2A2A2A  dim #6B6B6B  fg #B8B8B8  bright #D4D4D4 */
+
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
     font-size: 13px;
@@ -7,43 +10,63 @@
 }
 
 window#waybar {
-    background: #0C0C0C;
-    color: #CCCCCC;
+    background: rgba(12, 12, 12, 0.94);
+    color: #B8B8B8;
+    border: 1px solid #242424;
+    border-radius: 6px;
+}
+
+/* Workspaces: every button has the same box; only color and the underline change */
+#workspaces {
+    padding: 0 6px;
 }
 
 #workspaces button {
-    padding: 0 8px;
+    padding: 0 9px;
+    margin: 0 1px;
     background: transparent;
-    color: #777777;
-    transition: background-color 120ms ease;
+    color: #5A5A5A;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
 }
 
 #workspaces button:hover {
-    background: #242424;
-    color: #CCCCCC;
+    color: #B8B8B8;
 }
 
 #workspaces button.focused {
-    background: #353535;
-    color: #E0E0E0;
+    color: #D4D4D4;
+    border-bottom-color: #7A7A7A;
 }
 
 #workspaces button.urgent {
-    background: #241719;
-    color: #C08086;
+    color: #CC5F5A;
+    border-bottom-color: #CC5F5A;
 }
 
-/* Right-side modules: same padding, same divider between each */
-#backlight, #pulseaudio, #language, #custom-date, #clock, #tray {
-    padding: 0 10px;
-    color: #CCCCCC;
-    border-left: 1px solid #353535;
+/* Right side: same padding and the same divider between every module */
+#tray, #backlight, #pulseaudio, #language, #custom-date, #clock {
+    padding: 0 12px;
+    color: #B8B8B8;
+    border-left: 1px solid #242424;
 }
 
 #tray {
     border-left: none;
 }
 
-#pulseaudio.muted, #pulseaudio.source-muted {
-    color: #C08086;
+#clock {
+    color: #D4D4D4;
+}
+
+#pulseaudio.muted {
+    color: #CC5F5A;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
 }

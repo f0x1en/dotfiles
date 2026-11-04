@@ -67,6 +67,7 @@
 .ipython/
 .jupyter/
 .config/uv/
+.config/zellij/
 .config/session/
 .config/configstore/
 .config/browser-harness/
@@ -107,8 +108,6 @@ node_modules/
 .config/cef_user_data/
 .config/LocalPrefs.json
 .config/dconf/
-.config/gtk-3.0/*.css
-.config/gtk-4.0/*.css
 .config/gtk-3.0/bookmarks
 .config/gtk-4.0/bookmarks
 

@@ -1,5 +1,25 @@
+# Campbell
 color=0C0C0C
-indicator-radius=80
-ring-color=45475a
-key-hl-color=89b4fa
+font=JetBrainsMono Nerd Font
+indicator-radius=90
+indicator-thickness=6
+inside-color=0C0C0C
+inside-clear-color=0C0C0C
+inside-ver-color=0C0C0C
+inside-wrong-color=0C0C0C
+ring-color=2A2A2A
+ring-clear-color=6B6B6B
+ring-ver-color=7A7A7A
+ring-wrong-color=CC5F5A
+line-color=00000000
+line-clear-color=00000000
+line-ver-color=00000000
+line-wrong-color=00000000
+separator-color=00000000
+key-hl-color=7A7A7A
+bs-hl-color=CC5F5A
+text-color=B8B8B8
+text-clear-color=6B6B6B
+text-ver-color=B8B8B8
+text-wrong-color=CC5F5A
 show-failed-attempts

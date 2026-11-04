@@ -3,31 +3,31 @@ vim.g.colors_name = "campbell"
 
 local c = {
     bg = "#0C0C0C",
-    fg = "#CCCCCC",
+    fg = "#B8B8B8",
     black = "#0C0C0C",
 
-    -- Muted Campbell palette
-    red = "#B06C75",
-    green = "#819777",
-    yellow = "#B8A477",
-    blue = "#7892B2",
-    purple = "#A08BAF",
-    cyan = "#7FA6A6",
-    white = "#CCCCCC",
+    -- Neutral grays + three accents (red / green / amber). Syntax uses only these:
+    --   red = keywords, green = strings, amber = functions, strong = types/numbers.
+    red = "#CC5F5A",
+    green = "#7BAA62",
+    yellow = "#D1A34D",
+    blue = "#D4D4D4",
+    purple = "#CC5F5A",
+    cyan = "#D4D4D4",
+    white = "#B8B8B8",
 
-    -- Softer foreground colors
-    bright_black = "#777777",
-    bright_red = "#C08086",
-    bright_green = "#91A987",
-    bright_yellow = "#C7B58D",
-    bright_blue = "#8AA2C0",
-    bright_purple = "#AE9ABB",
-    bright_cyan = "#91B4B2",
-    bright_white = "#E0E0E0",
+    bright_black = "#6B6B6B",
+    bright_red = "#CC5F5A",
+    bright_green = "#7BAA62",
+    bright_yellow = "#D1A34D",
+    bright_blue = "#D4D4D4",
+    bright_purple = "#CC5F5A",
+    bright_cyan = "#D4D4D4",
+    bright_white = "#D4D4D4",
 
     surface = "#1C1C1C",
-    selection = "#353535",
-    border = "#404040",
+    selection = "#2E2E2E",
+    border = "#383838",
 }
 
 local groups = {
@@ -46,7 +46,7 @@ local groups = {
     MatchParen = { fg = c.yellow, bold = true, underline = true },
 
     -- Syntax
-    Comment = { fg = "#777777", italic = true },
+    Comment = { fg = "#6B6B6B", italic = true },
     Constant = { fg = c.cyan },
     String = { fg = c.green },
     Character = { fg = c.green },
@@ -60,7 +60,7 @@ local groups = {
     Conditional = { fg = c.red },
     Repeat = { fg = c.red },
     Label = { fg = c.red },
-    Operator = { fg = "#AAAAAA" },
+    Operator = { fg = "#8A8A8A" },
     Keyword = { fg = c.purple },
     Exception = { fg = c.red },
 
@@ -76,8 +76,8 @@ local groups = {
 
     Special = { fg = c.cyan },
     SpecialChar = { fg = c.yellow },
-    Delimiter = { fg = "#A0A0A0" },
-    Error = { fg = "#D0A0A0", underline = true },
+    Delimiter = { fg = "#7E7E7E" },
+    Error = { fg = "#A87070", underline = true },
     Todo = { fg = c.yellow, bold = true },
 
     -- Popup menu
@@ -88,7 +88,7 @@ local groups = {
 
     -- Status line and splits
     StatusLine = { fg = c.fg, bg = "#242424" },
-    StatusLineNC = { fg = "#888888", bg = "#171717" },
+    StatusLineNC = { fg = "#707070", bg = "#171717" },
     WinSeparator = { fg = c.border },
     VertSplit = { fg = c.border },
 
@@ -133,7 +133,7 @@ local treesitter = {
     ["@variable"] = { fg = c.fg },
     ["@variable.builtin"] = { fg = c.red },
     ["@property"] = { fg = c.blue },
-    ["@punctuation.bracket"] = { fg = "#AAAAAA" },
+    ["@punctuation.bracket"] = { fg = "#8A8A8A" },
     ["@punctuation.delimiter"] = groups.Delimiter,
     ["@tag"] = { fg = c.red },
     ["@tag.attribute"] = { fg = c.blue },

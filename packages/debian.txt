@@ -97,6 +97,11 @@ fonts-hosny-amiri
 gcc-riscv64-linux-gnu
 qemu-user
 
+# Theme: GTK, icons, cursor
+gnome-themes-extra
+papirus-icon-theme
+adwaita-icon-theme
+
 # Fonts and CLI extras
 fontconfig
 fonts-inter

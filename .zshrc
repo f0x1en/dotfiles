@@ -205,6 +205,9 @@ alias omniroute-off='pkill -f omniroute'
 alias config='git --git-dir="$HOME/.cfg" --work-tree="$HOME"'
 
 # clipboard history
+# fzf: Campbell
+export FZF_DEFAULT_OPTS="--color=bg:#0C0C0C,bg+:#242424,fg:#B8B8B8,fg+:#D4D4D4,hl:#E2B964,hl+:#E2B964,info:#6B6B6B,prompt:#B8B8B8,pointer:#D4D4D4,marker:#8FBF74,spinner:#C99A45,header:#6B6B6B,border:#2A2A2A"
+
 alias ch='cliphist list | fzf --no-sort --bind "j:down,k:up" | cliphist decode | wl-copy'
 
 # ── Tools ────────────────────────────────────────────────────
