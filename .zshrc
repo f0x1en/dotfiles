@@ -128,7 +128,7 @@ zathura() { bg zathura "$@" }
 mousepad() { bg mousepad "$@" }
 
 # scrcpy
-typeset -ga SCRCPY_OPTS=(-Sw -m1920 --max-fps=60)
+typeset -ga SCRCPY_OPTS=(-Sw -m1920 --max-fps=60 --power-off-on-close)
 
 phone-on() {
     BG_LOG="$HOME/.local/state/phone.log" bg scrcpy $SCRCPY_OPTS
@@ -151,29 +151,47 @@ mdpdf() {
 
     pandoc "$input" \
         --pdf-engine=xelatex \
+        -V lang=en-US \
+        --syntax-highlighting=idiomatic \
         -H "$HOME/.config/pandoc/persian-header.tex" \
         --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
         -o "$output"
 }
+# mdpdf() {
+#     if (( $# < 1 || $# > 2 )); then
+#         print -u2 "Usage: mdpdf input.md [output.pdf]"
+#         return 2
+#     fi
+#
+#     local input="$1"
+#     local output="${2:-${1:r}.pdf}"
+#
+#     pandoc "$input" \
+#         --pdf-engine=xelatex \
+#         -H "$HOME/.config/pandoc/persian-header.tex" \
+#         --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
+#         -o "$output"
+# }
 
 # Tools routed through the local proxy
-reels() {
-    local p=socks5h://127.0.0.1:10808
-    ALL_PROXY=$p HTTP_PROXY=$p HTTPS_PROXY=$p \
-        command reels "$@"
-}
+# reels() {
+#     local p=socks5h://127.0.0.1:10808
+#     ALL_PROXY=$p HTTP_PROXY=$p HTTPS_PROXY=$p \
+#         command reels "$@"
+# }
 
-opencode() {
-    local p=http://127.0.0.1:10808
-    HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
-    NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
-        command opencode "$@"
-}
+# opencode() {
+#     local p=http://127.0.0.1:10808
+#     HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
+#     NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
+#         command opencode "$@"
+# }
 
 # ── Aliases ──────────────────────────────────────────────────
 alias vim='nvim'
 alias v='nvim'
 alias vimm='vim'
+alias ssh='TERM=xterm-256color ssh'
 
 # prime-run
 alias nvrun='__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia'
@@ -197,3 +215,10 @@ if [[ -f "$HOME/.zshrc.local" ]]; then
     source "$HOME/.zshrc.local"
 fi
 export PATH="$HOME/.local/bin:$PATH"
+
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

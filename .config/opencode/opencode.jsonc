@@ -14,5 +14,9 @@
         }
       }
     }
-  }
+  },
+
+  "plugins": [
+    "@bybrawe/opencode-loop@0.6.10"
+  ]
 }

@@ -5,6 +5,11 @@ set $term kitty
 set $menu fuzzel
 set $browser firefox-esr
 
+### Appearance
+
+# Solid background (no wallpaper needed)
+output * bg #0C0C0C solid_color
+
 ### Startup
 
 # Declare environment
@@ -15,13 +20,21 @@ exec_always pkill -x kanshi; exec /usr/bin/kanshi
 exec_always sh -c 'pkill -x waybar 2>/dev/null; exec waybar'
 # Notifications
 exec mako
+# Volume/brightness OSD
+exec_always ~/.config/sway/scripts/wob-start
 # kdeconnect phone
 exec /usr/bin/kdeconnectd
 # Clipboard
 exec wl-paste --watch cliphist store
+# Idle: lock after 10 min, screen off after 15, lock before suspend
+exec swayidle -w \
+    timeout 600 'swaylock -f' \
+    timeout 900 'swaymsg "output * power off"' \
+    resume 'swaymsg "output * power on"' \
+    before-sleep 'swaylock -f'
 # v2rayn
-assign [class="v2rayN"] workspace number 9
-exec /usr/bin/v2rayn
+# assign [class="v2rayN"] workspace number 9
+# exec /usr/bin/v2rayn
 
 ### Key bindings
 
@@ -64,19 +77,15 @@ bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
 # Hardware controls
-bindsym $mod+F1 exec wpctl set-mute @DEFAULT_SINK@ toggle
-bindsym $mod+F2 exec wpctl set-volume @DEFAULT_SINK@ 5%-
-bindsym $mod+F3 exec wpctl set-volume @DEFAULT_SINK@ 5%+
-bindsym $mod+F4 exec wpctl set-mute @DEFAULT_SOURCE@ toggle
-bindsym $mod+F5 exec brightnessctl set 5%-
-bindsym $mod+F6 exec brightnessctl set 5%+
+bindsym $mod+F1 exec ~/.config/sway/scripts/osd vol-mute
+bindsym $mod+F2 exec ~/.config/sway/scripts/osd vol-down
+bindsym $mod+F3 exec ~/.config/sway/scripts/osd vol-up
+bindsym $mod+F4 exec ~/.config/sway/scripts/osd mic-mute
+bindsym $mod+F5 exec ~/.config/sway/scripts/osd bright-down
+bindsym $mod+F6 exec ~/.config/sway/scripts/osd bright-up
 ## yazi
 bindsym $mod+e exec kitty --title files yazi
-## cmus
-bindsym  $mod+m  exec kitty cmus
-bindsym  $mod+F7 exec cmus-remote -r
-bindsym  $mod+F8 exec cmus-remote -u
-bindsym  $mod+F9 exec cmus-remote -n
+## music: use mpv directly for now
 # change keyboard layout
 input type:keyboard {
     xkb_layout "us,ir"

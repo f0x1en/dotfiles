@@ -1,0 +1,30 @@
+#!/bin/sh
+# Usage: osd {vol-up|vol-down|vol-mute|mic-mute|bright-up|bright-down}
+# Changes the setting, then shows it on the wob bar.
+WOB="$XDG_RUNTIME_DIR/wob.sock"
+SINK=@DEFAULT_SINK@
+SRC=@DEFAULT_SOURCE@
+
+show() { [ -p "$WOB" ] && echo "$1 $2" > "$WOB"; }
+
+audio() { # $1=target $2=style
+    out=$(wpctl get-volume "$1")
+    vol=$(echo "$out" | awk '{printf "%d", $2*100}')
+    case "$out" in
+        *MUTED*) show "$vol" muted ;;
+        *) show "$vol" "$2" ;;
+    esac
+}
+
+case "$1" in
+    vol-up)   wpctl set-mute $SINK 0; wpctl set-volume -l 1.0 $SINK 5%+; audio $SINK volume ;;
+    vol-down) wpctl set-volume $SINK 5%-; audio $SINK volume ;;
+    vol-mute) wpctl set-mute $SINK toggle; audio $SINK volume ;;
+    mic-mute) wpctl set-mute $SRC toggle
+              case "$(wpctl get-volume $SRC)" in
+                  *MUTED*) show 0 muted ;;
+                  *) show "$(wpctl get-volume $SRC | awk '{printf "%d", $2*100}')" mic ;;
+              esac ;;
+    bright-up)   show "$(brightnessctl -m set 5%+ | cut -d, -f4 | tr -d %)" brightness ;;
+    bright-down) show "$(brightnessctl -m set 5%- | cut -d, -f4 | tr -d %)" brightness ;;
+esac

@@ -23,6 +23,10 @@ kanshi
 fuzzel
 kitty
 mako-notifier
+libnotify-bin
+wob
+xwayland
+polkitd
 xdg-desktop-portal-wlr
 
 # Shell and terminal tools
@@ -45,7 +49,6 @@ zathura
 zathura-pdf-poppler
 mpv
 imv
-cmus
 playerctl
 mousepad
 
@@ -60,6 +63,14 @@ brightnessctl
 pipewire
 pipewire-audio
 wireplumber
+
+# Rust toolchain + build deps for: cargo install wiremix bluetui wlctl
+cargo
+pkg-config
+clang
+libpipewire-0.3-dev
+libclang-dev
+libdbus-1-dev
 
 # Connectivity
 network-manager

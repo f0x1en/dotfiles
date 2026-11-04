@@ -33,7 +33,7 @@ window#waybar {
     color: #C08086;
 }
 
-#custom-keyboard {
+#language {
     padding: 0 8px;
     color: #7892B2;
 }
@@ -47,4 +47,13 @@ window#waybar {
 #tray {
     padding: 0 6px;
     border-left: 1px solid #353535;
+}
+
+#pulseaudio, #backlight {
+    padding: 0 8px;
+    color: #CCCCCC;
+}
+
+#pulseaudio.muted, #pulseaudio.source-muted {
+    color: #C08086;
 }

@@ -11,6 +11,8 @@ Sway, Zsh, Neovim, and Kitty.
 | Window manager | Sway |
 | Status bar | Waybar |
 | Notifications | mako |
+| On-screen indicators | wob (volume, mic, brightness) |
+| Idle / lock | swayidle + swaylock |
 | Display profiles | kanshi |
 | Terminal | Kitty |
 | Shell | Zsh + Oh My Zsh |
@@ -22,7 +24,6 @@ Sway, Zsh, Neovim, and Kitty.
 | Image viewer | imv |
 | Browser | Firefox ESR |
 | Media player | mpv |
-| Music player | cmus |
 | Audio | PipeWire + WirePlumber + Wiremix |
 | Network | NetworkManager + wlctl |
 | Bluetooth | BlueZ + bluetui |
@@ -39,7 +40,7 @@ tree. No symlinks are used; files are managed in place.
 |---|---|
 | Shell | `.zshrc`, `.zprofile`, `.gitconfig` |
 | Terminal | `.tmux.conf`, `.config/kitty/` |
-| Window manager | `.config/sway/`, `.config/waybar/`, `.config/kanshi/` |
+| Window manager | `.config/sway/`, `.config/waybar/`, `.config/kanshi/`, `.config/swaylock/`, `.config/wob/` |
 | Desktop | `.config/mako/`, `.config/fuzzel/`, `.config/mimeapps.list`, `.config/user-dirs.dirs` |
 | GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini`, `.config/xsettingsd/xsettingsd.conf` |
 | Editor | `.config/nvim/` |
@@ -59,7 +60,6 @@ tree. No symlinks are used; files are managed in place.
 | `Mod + D` | Application launcher |
 | `Mod + W` | Open Firefox |
 | `Mod + E` | Open Yazi |
-| `Mod + M` | Open cmus |
 | `Mod + T` | Open Telegram |
 | `Mod + X` | Run a command |
 | `Mod + /` | Help menu |
@@ -85,13 +85,16 @@ tree. No symlinks are used; files are managed in place.
 
 ### Hardware controls
 
+Volume, mic and brightness changes show a bar on screen (wob): blue for volume,
+green for mic, yellow for brightness, red when muted. Waybar also shows the
+current volume, mic state, brightness and keyboard layout.
+
 | Shortcut | Action |
 |---|---|
 | `Mod + F1` | Toggle audio mute |
 | `Mod + F2` / `F3` | Volume down / up |
 | `Mod + F4` | Toggle microphone mute |
 | `Mod + F5` / `F6` | Brightness down / up |
-| `Mod + F7` / `F8` / `F9` | cmus previous / play-pause / next |
 
 The network, Bluetooth, and audio tools run in floating Kitty windows.
 
@@ -236,11 +239,8 @@ git --git-dir="$HOME/.cfg" --work-tree="$HOME" status
 
 ## Notes
 
-- `.gitconfig` routes GitHub and gist traffic through a local SOCKS5 proxy at
-  `127.0.0.1:10808` and uses `gh` as the credential helper. Adjust or remove
-  those entries if your network setup differs.
-- The `reels` and `opencode` shell helpers also assume the local proxy at
-  `127.0.0.1:10808`.
+- `.gitconfig` uses `gh` as the credential helper. If you need a proxy for
+  GitHub, add an `[http]` `proxy` entry yourself; none is configured.
 - Keybindings and monitor profiles are specific to this Sway configuration.
 - Display profiles are managed by kanshi in `.config/kanshi/config`.
 - Yazi uses Kitty's graphics protocol for image previews.

@@ -1,3 +1,31 @@
 \usepackage{xepersian}
-\settextfont{Amiri}
-\setlatintextfont{Latin Modern Roman}
+\providecommand\UseMathForPositioningText{}
+
+\settextfont[
+    Path=/usr/share/fonts/truetype/vazirmatn/,
+    Extension=.ttf,
+    UprightFont=Vazirmatn-Regular,
+    BoldFont=Vazirmatn-Bold
+]{Vazirmatn}
+
+\setlatintextfont{Inter}
+\setlatinmonofont{JetBrains Mono}
+
+% Short English runs inside Persian paragraphs.
+\providecommand{\en}[1]{{\latinfont\lr{#1}}}
+
+% Always display page numbers using Western digits.
+\renewcommand{\thepage}{\en{\number\value{page}}}
+
+% Use the Latin font for list bullets.
+\renewcommand{\labelitemi}{\ensuremath{\bullet}}
+\renewcommand{\labelitemii}{\ensuremath{\bullet}}
+\renewcommand{\labelitemiii}{\ensuremath{\bullet}}
+\renewcommand{\labelitemiv}{\ensuremath{\bullet}}
+
+\usepackage{fvextra}
+\RecustomVerbatimEnvironment{Verbatim}{Verbatim}{commandchars=\\\{\}}
+
+% Render inline code using the Latin monospace font, even in Persian text.
+
+

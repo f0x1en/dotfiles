@@ -85,12 +85,9 @@ node_modules/
 .config/gtk-3.0/assets/
 
 # Desktop and application state
-.config/cmus/autosave
-.config/cmus/cache
-.config/cmus/command-history
-.config/cmus/lib.pl
-.config/cmus/search-history
-.config/cmus/playlists/
+.config/cmus/
+.config/broot/skins/
+!.config/broot/skins/dark-blue.hjson
 .config/quodlibet/
 .config/strawberry/
 .config/vlc/

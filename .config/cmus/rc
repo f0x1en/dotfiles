@@ -1,2 +1,0 @@
-bind -f common z player-prev
-bind -f common b player-next

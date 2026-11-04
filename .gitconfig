@@ -1,8 +1,6 @@
-[http "https://github.com"]
-	proxy = socks5h://127.0.0.1:10808
 [user]
 	name = f0x1en
-	email = f0x1en@protonmail.com
+	email = 71270502+f0x1en@users.noreply.github.com
 [credential "https://github.com"]
 	helper =
 	helper = !/usr/bin/gh auth git-credential
@@ -27,9 +25,5 @@
 	navigate = true
 	side-by-side = true
 	line-numbers = true
-[http]
-	proxy = socks5h://127.0.0.1:10808
-[https]
-	proxy = socks5h://127.0.0.1:10808
 [alias]
 	logg = log --oneline --graph --decorate
