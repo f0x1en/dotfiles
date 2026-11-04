@@ -45,7 +45,7 @@ window#waybar {
 }
 
 /* Right side: same padding and the same divider between every module */
-#tray, #backlight, #pulseaudio, #language, #custom-date, #clock {
+#tray, #backlight, #pulseaudio, #language, #clock {
     padding: 0 12px;
     color: #B8B8B8;
     border-left: 1px solid #242424;
@@ -53,6 +53,10 @@ window#waybar {
 
 #tray {
     border-left: none;
+}
+
+#clock.date {
+    color: #B8B8B8;
 }
 
 #clock {

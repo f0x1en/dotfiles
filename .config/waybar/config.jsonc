@@ -16,7 +16,7 @@
         "pulseaudio",
         "pulseaudio#mic",
         "sway/language",
-        "custom/date",
+        "clock#date",
         "clock"
     ],
     "tray": {
@@ -56,9 +56,8 @@
         "min-length": 2,
         "tooltip": false
     },
-    "custom/date": {
-        "exec": "~/.config/waybar/jalali-date",
-        "interval": 30,
+    "clock#date": {
+        "format": "{:%a %d %b}",
         "tooltip": false
     },
     "clock": {
