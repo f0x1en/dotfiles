@@ -33,25 +33,19 @@ window#waybar {
     color: #C08086;
 }
 
+/* Right-side modules: same padding, same divider between each */
+#backlight, #pulseaudio, #language, #custom-date, #clock, #tray {
+    padding: 0 10px;
+    color: #CCCCCC;
+    border-left: 1px solid #353535;
+}
+
+#backlight {
+    border-left: none;
+}
+
 #language {
-    padding: 0 8px;
     color: #7892B2;
-}
-
-#clock {
-    padding: 0 8px;
-    border-left: 1px solid #353535;
-    color: #CCCCCC;
-}
-
-#tray {
-    padding: 0 6px;
-    border-left: 1px solid #353535;
-}
-
-#pulseaudio, #backlight {
-    padding: 0 8px;
-    color: #CCCCCC;
 }
 
 #pulseaudio.muted, #pulseaudio.source-muted {
