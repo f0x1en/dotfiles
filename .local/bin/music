@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""music: small mpv music player. Run `music` or `music <folder>`. Keys are shown on screen."""
+import curses, json, os, random, signal, socket, subprocess, sys, time
+
+ROOT = os.environ.get("MUSIC_DIR", os.path.expanduser("~/Music"))
+RUN = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+SOCK = f"{RUN}/music-{os.getpid()}.sock"
+LIST = f"{RUN}/music-{os.getpid()}.m3u"
+STATE = os.path.expanduser("~/.local/state/music.json")
+EXT = {".mp3", ".flac", ".ogg", ".opus", ".m4a", ".wav", ".aac", ".wma"}
+GAIN = 20  # bass/treble range is -GAIN..+GAIN dB
+
+
+class Mpv:
+    def __init__(self):
+        self.proc = subprocess.Popen(
+            ["mpv", "--idle=yes", "--no-video", "--no-terminal", f"--input-ipc-server={SOCK}",
+             "--af=@bass:lavfi=[bass=g=0],@treble:lavfi=[treble=g=0]"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.s = socket.socket(socket.AF_UNIX)
+        for _ in range(50):
+            try:
+                self.s.connect(SOCK)
+                break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            raise SystemExit("could not connect to mpv")
+        self.s.settimeout(2)
+        self.buf, self.n = b"", 0
+
+    def cmd(self, *args):
+        self.n += 1
+        rid = self.n
+        try:
+            self.s.sendall(json.dumps({"command": list(args), "request_id": rid}).encode() + b"\n")
+            while True:
+                while b"\n" in self.buf:
+                    line, self.buf = self.buf.split(b"\n", 1)
+                    m = json.loads(line)
+                    if m.get("request_id") == rid:
+                        return m.get("data") if m.get("error") == "success" else None
+                self.buf += self.s.recv(65536)
+        except (OSError, ValueError):
+            return None
+
+    def get(self, prop):
+        return self.cmd("get_property", prop)
+
+    def close(self):
+        self.proc.terminate()
+        for p in (SOCK, LIST):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+
+
+def audio_folders():
+    """[(path, label, track count)] for every folder with audio at or below it."""
+    counts = {}
+    for d, dirs, files in os.walk(ROOT, followlinks=True):
+        dirs[:] = [x for x in dirs if not x.startswith(".")]
+        n = sum(os.path.splitext(f)[1].lower() in EXT for f in files)
+        while n and True:
+            counts[d] = counts.get(d, 0) + n
+            if d == ROOT or not d.startswith(ROOT):
+                break
+            d = os.path.dirname(d)
+    out = [(d, "All music" if d == ROOT else os.path.relpath(d, ROOT), n) for d, n in counts.items()]
+    return sorted(out, key=lambda x: (x[0] != ROOT, x[1].lower()))
+
+
+def tracks(folder):
+    out = []
+    for d, dirs, files in os.walk(folder, followlinks=True):
+        dirs[:] = [x for x in dirs if not x.startswith(".")]
+        out += [os.path.join(d, f) for f in files if os.path.splitext(f)[1].lower() in EXT]
+    return sorted(out)
+
+
+def smart_order(files):
+    """Shuffle with no repeats. Each folder's tracks are spread evenly over the whole queue."""
+    groups = {}
+    for f in files:
+        groups.setdefault(os.path.dirname(f), []).append(f)
+    keyed = []
+    for g in groups.values():
+        random.shuffle(g)
+        keyed += [((i + random.random()) / len(g), f) for i, f in enumerate(g)]
+    return [f for _, f in sorted(keyed)]
+
+
+def mmss(t):
+    t = int(t or 0)
+    return f"{t // 60:02d}:{t % 60:02d}"
+
+
+def bar(frac, width, ch="█", empty="─"):
+    n = max(0, min(width, round(frac * width)))
+    return ch * n + empty * (width - n)
+
+
+class App:
+    def __init__(self, scr, mpv):
+        self.scr, self.m = scr, mpv
+        self.vol, self.bass, self.treble, self.shuffle = 80, 0, 0, True
+        try:
+            self.__dict__.update(json.load(open(STATE)))
+        except (OSError, ValueError):
+            pass
+        self.folder, self.files = None, []
+        self.apply_audio()
+
+    def save(self):
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        json.dump({k: getattr(self, k) for k in ("vol", "bass", "treble", "shuffle")}, open(STATE, "w"))
+
+    def apply_audio(self):
+        self.m.cmd("set_property", "volume", self.vol)
+        for name in ("bass", "treble"):
+            self.m.cmd("af-command", name, "gain", str(getattr(self, name)), name)
+        self.m.cmd("set_property", "volume-gain", -self.cut())  # boost never clips
+
+    def cut(self):
+        return max(0, self.bass, self.treble)
+
+    def load(self, folder):
+        self.files = tracks(folder)
+        if self.files:
+            self.folder = folder
+            self.requeue()
+
+    def requeue(self, first=None, pos=0):
+        order = smart_order(self.files) if self.shuffle else list(self.files)
+        if first in order:
+            order.remove(first)
+            order.insert(0, first)
+        self.m.cmd("loadfile", order[0], "replace", -1, f"start={pos}")
+        if len(order) > 1:
+            open(LIST, "w").write("\n".join(order[1:]) + "\n")
+            self.m.cmd("loadlist", LIST, "append")
+        self.m.cmd("set_property", "pause", False)
+
+    def current(self):
+        pl = self.m.get("playlist") or []
+        return pl, next((i for i, e in enumerate(pl) if e.get("current")), None)
+
+    def play_now(self, path):
+        pl, cur = self.current()
+        for i, e in enumerate(pl):
+            if e["filename"] == path and cur is not None and i > cur:
+                self.m.cmd("playlist-remove", i)  # already coming up later: play it once
+                break
+        self.m.cmd("loadfile", path, "replace" if cur is None else "insert-next")
+        if cur is not None:
+            self.m.cmd("playlist-next")
+
+    def adjust(self, name, delta, lo, hi):
+        setattr(self, name, max(lo, min(hi, getattr(self, name) + delta)))
+        self.apply_audio()
+        self.save()
+
+    # ---- drawing ----
+    def put(self, y, x, text, attr=0):
+        try:
+            self.scr.addnstr(y, x, text, max(0, self.W - x - 2), attr)
+        except curses.error:
+            pass
+
+    def draw(self):
+        scr = self.scr
+        scr.erase()
+        h, w = scr.getmaxyx()
+        if h < 14 or w < 40:
+            scr.addnstr(0, 0, "terminal too small", w - 1)
+            scr.refresh()
+            return
+        H, self.W = min(h, 24), min(w, 64)
+        W = self.W
+        pl, cur = self.current()
+        title = self.m.get("media-title")
+        pos, dur = self.m.get("time-pos"), self.m.get("duration")
+        paused, loop = self.m.get("pause"), self.m.get("loop-playlist")
+        # box
+        scr.addstr(0, 0, "┌ Music " + "─" * (W - 9) + "┐")
+        for y in range(1, H - 1):
+            scr.addstr(y, 0, "│")
+            scr.addstr(y, W - 1, "│")
+        scr.addstr(H - 1, 0, "└" + "─" * (W - 2) + "┘")
+        # now playing
+        if cur is None:
+            self.put(1, 2, "nothing playing - press o to pick a folder", curses.A_DIM)
+        else:
+            self.put(1, 2, ("❚❚ " if paused else "▶ ") + (title or ""), curses.A_BOLD)
+            self.put(2, 4, os.path.basename(self.folder or ""), curses.A_DIM)
+            self.put(3, 4, f"{mmss(pos)} {bar((pos or 0) / dur if dur else 0, W - 18, '━')} {mmss(dur)}")
+        # queue
+        rep = "on" if loop not in (False, None, "no") else "off"
+        self.put(5, 2, "Up next", curses.A_DIM)
+        status = f"shuffle {'on' if self.shuffle else 'off'} · repeat {rep}"
+        self.put(5, W - 3 - len(status), status, curses.A_DIM)
+        nxt = pl[cur + 1:] if cur is not None else []
+        for i, e in enumerate(nxt[: H - 8 - 6]):
+            name = os.path.splitext(os.path.basename(e["filename"]))[0]
+            self.put(6 + i, 4, name)
+        # controls
+        bw = W - 30
+        note = f"  cut -{self.cut()} dB" if self.cut() else ""
+        self.put(H - 6, 2, f"vol   {bar(self.vol / 100, bw)} {self.vol:>3}{note}")
+        self.put(H - 5, 2, f"bass  {bar((self.bass + GAIN) / (2 * GAIN), bw)} {self.bass:>+3}")
+        self.put(H - 4, 2, f"treb  {bar((self.treble + GAIN) / (2 * GAIN), bw)} {self.treble:>+3}")
+        self.put(H - 3, 2, "space pause  ←/→ seek  n/p skip  o folder  / search", curses.A_DIM)
+        self.put(H - 2, 2, "r repeat  s shuffle  ↑↓ vol  b/B bass  t/T treb  q quit", curses.A_DIM)
+        scr.refresh()
+
+    # ---- chooser (folder picker and search) ----
+    def choose(self, items, prompt):
+        """items: [(value, label)]. Type to filter, enter picks, esc cancels. Returns value or None."""
+        filt, sel, scr = "", 0, self.scr
+        scr.timeout(-1)
+        result = None
+        while True:
+            shown = [i for i in items if filt.lower() in i[1].lower()]
+            sel = max(0, min(sel, len(shown) - 1))
+            scr.erase()
+            h, w = scr.getmaxyx()
+            scr.addnstr(0, 0, f"{prompt}> {filt}", w - 1, curses.A_BOLD)
+            scr.addnstr(1, 0, "enter play   esc cancel   type to filter", w - 1, curses.A_DIM)
+            rows = h - 3
+            start = max(0, min(sel - rows // 2, len(shown) - rows))
+            for i, (_, label) in enumerate(shown[start:start + rows]):
+                attr = curses.A_REVERSE if start + i == sel else 0
+                scr.addnstr(3 + i, 0, f" {label}".ljust(w - 1), w - 1, attr)
+            k = scr.getch()
+            if k in (27, 3):
+                break
+            elif k in (10, curses.KEY_ENTER) and shown:
+                result = shown[sel][0]
+                break
+            elif k == curses.KEY_UP:
+                sel -= 1
+            elif k == curses.KEY_DOWN:
+                sel += 1
+            elif k in (curses.KEY_BACKSPACE, 127, 8):
+                filt, sel = filt[:-1], 0
+            elif 32 <= k < 127:
+                filt, sel = filt + chr(k), 0
+        scr.timeout(250)
+        return result
+
+    def pick(self):
+        folder = self.choose([(d, f"{label}  ({n})") for d, label, n in audio_folders()], "folder")
+        if folder:
+            self.load(folder)
+
+    def search(self):
+        if self.folder:
+            f = self.choose([(f, os.path.splitext(os.path.relpath(f, self.folder))[0]) for f in self.files], "search")
+            if f:
+                self.play_now(f)
+
+    def run(self, start):
+        curses.curs_set(0)
+        self.scr.keypad(True)
+        self.scr.timeout(250)
+        if start:
+            self.load(start)
+        else:
+            self.pick()
+        while True:
+            self.draw()
+            k = self.scr.getch()
+            if k in (ord("q"), 3):
+                return
+            elif k == ord(" "):
+                self.m.cmd("cycle", "pause")
+            elif k == ord("n"):
+                self.m.cmd("playlist-next")
+            elif k == ord("p"):
+                self.m.cmd("playlist-prev")
+            elif k == curses.KEY_RIGHT:
+                self.m.cmd("seek", 5, "relative")
+            elif k == curses.KEY_LEFT:
+                self.m.cmd("seek", -5, "relative")
+            elif k in (curses.KEY_UP, ord("+"), ord("=")):
+                self.adjust("vol", 5, 0, 100)
+            elif k in (curses.KEY_DOWN, ord("-")):
+                self.adjust("vol", -5, 0, 100)
+            elif k == ord("b"):
+                self.adjust("bass", 1, -GAIN, GAIN)
+            elif k == ord("B"):
+                self.adjust("bass", -1, -GAIN, GAIN)
+            elif k == ord("t"):
+                self.adjust("treble", 1, -GAIN, GAIN)
+            elif k == ord("T"):
+                self.adjust("treble", -1, -GAIN, GAIN)
+            elif k == ord("r"):
+                on = self.m.get("loop-playlist") not in (False, None, "no")
+                self.m.cmd("set_property", "loop-playlist", "no" if on else "inf")
+            elif k == ord("s"):
+                self.shuffle = not self.shuffle
+                self.save()
+                pl, cur = self.current()
+                if cur is not None:
+                    self.requeue(pl[cur]["filename"], self.m.get("time-pos") or 0)
+            elif k == ord("o"):
+                self.pick()
+            elif k == ord("/"):
+                self.search()
+
+
+def main():
+    start = None
+    if len(sys.argv) > 1:
+        start = os.path.realpath(sys.argv[1])
+        if not os.path.isdir(start):
+            raise SystemExit(f"not a folder: {sys.argv[1]}")
+    mpv = Mpv()
+    for sig in (signal.SIGHUP, signal.SIGTERM):
+        signal.signal(sig, lambda *_: sys.exit(0))
+    try:
+        curses.wrapper(lambda scr: App(scr, mpv).run(start))
+    finally:
+        mpv.close()
+
+
+if __name__ == "__main__":
+    main()
