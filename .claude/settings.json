@@ -1,6 +1,5 @@
 {
   "model": "sonnet",
-  "theme": "dark-daltonized",
   "hooks": {
     "PreToolUse": [
       {
@@ -64,9 +63,25 @@
       }
     ]
   },
-  "outputStyle": "Concise",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
-  }
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" add *)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" commit *)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" push)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" push origin main)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" status *)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" log *)",
+      "Bash(git --git-dir=\"$HOME/.cfg\" --work-tree=\"$HOME\" diff *)"
+    ]
+  },
+  "outputStyle": "Concise",
+  "theme": "dark-ansi"
 }
