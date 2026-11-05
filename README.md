@@ -42,7 +42,7 @@ tree. No symlinks are used; files are managed in place.
 | Terminal | `.tmux.conf`, `.config/kitty/` |
 | Window manager | `.config/sway/`, `.config/waybar/`, `.config/kanshi/`, `.config/swaylock/`, `.config/wob/` |
 | Desktop | `.config/mako/`, `.config/fuzzel/`, `.config/mimeapps.list`, `.config/user-dirs.dirs` |
-| GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini`, `.config/xsettingsd/xsettingsd.conf` |
+| GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini` |
 | Editor | `.config/nvim/` |
 | CLI tools | `.config/btop/`, `.config/broot/`, `.config/tealdeer/`, `.config/yazi/` |
 | Documents | `.config/pandoc/`, `.config/zathura/` |

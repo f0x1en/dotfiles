@@ -67,6 +67,7 @@
 .ipython/
 .jupyter/
 .config/uv/
+.config/xsettingsd/
 .config/zellij/
 .config/session/
 .config/configstore/
