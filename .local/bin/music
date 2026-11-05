@@ -152,11 +152,16 @@ class App:
         pl = self.m.get("playlist") or []
         return pl, next((i for i, e in enumerate(pl) if e.get("current")), None)
 
+    def repeat_off(self):
+        """Skipping to another track ends repeat of the old one."""
+        self.m.cmd("set_property", "loop-file", "no")
+
     def play_now(self, path):
         pl, cur = self.current()
         if cur is not None and pl[cur]["filename"] == path:
             self.m.cmd("seek", 0, "absolute")
             return
+        self.repeat_off()
         for i in range(len(pl) - 1, -1, -1):
             if pl[i]["filename"] == path:
                 self.m.cmd("playlist-remove", i)  # keep a single copy in the list
@@ -189,7 +194,7 @@ class App:
         pl, cur = self.current()
         title = self.m.get("media-title")
         pos, dur = self.m.get("time-pos"), self.m.get("duration")
-        paused, loop = self.m.get("pause"), self.m.get("loop-playlist")
+        paused, loop = self.m.get("pause"), self.m.get("loop-file")
         # box
         scr.addstr(0, 0, "┌ Music " + "─" * (W - 9) + "┐")
         for y in range(1, H - 1):
@@ -246,6 +251,7 @@ class App:
         pl, cur = self.current()
         if not pl or self.qi == cur:
             return
+        self.repeat_off()
         if cur is None:
             self.m.cmd("playlist-play-index", self.qi)
             return
@@ -345,8 +351,10 @@ class App:
             elif k == ord(" "):
                 self.m.cmd("cycle", "pause")
             elif k == ord(">"):
+                self.repeat_off()
                 self.m.cmd("playlist-next")
             elif k == ord("<"):
+                self.repeat_off()
                 self.m.cmd("playlist-prev")
             elif k in (curses.KEY_RIGHT, ord("l")):
                 self.m.cmd("seek", 5, "relative")
@@ -383,8 +391,8 @@ class App:
                 self.apply_audio()
                 self.save()
             elif k == ord("r"):
-                on = self.m.get("loop-playlist") not in (False, None, "no")
-                self.m.cmd("set_property", "loop-playlist", "no" if on else "inf")
+                on = self.m.get("loop-file") not in (False, None, "no")
+                self.m.cmd("set_property", "loop-file", "no" if on else "inf")
             elif k == ord("s"):
                 self.shuffle = not self.shuffle
                 self.save()
