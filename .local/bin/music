@@ -109,7 +109,7 @@ class App:
             self.__dict__.update(json.load(open(STATE)))
         except (OSError, ValueError):
             pass
-        self.folder, self.files = None, []
+        self.folder, self.files, self.qpath = None, [], None  # qpath: track under the queue cursor
         self.apply_audio()
 
     def save(self):
@@ -181,12 +181,12 @@ class App:
         scr = self.scr
         scr.erase()
         h, w = scr.getmaxyx()
-        if h < 14 or w < 40:
+        if h < 12 or w < 40:
             scr.addnstr(0, 0, "terminal too small", w - 1)
             scr.refresh()
             return
-        H, self.W = min(h, 24), min(w, 68)
-        W = self.W
+        H = h
+        self.W = W = w
         pl, cur = self.current()
         title = self.m.get("media-title")
         pos, dur = self.m.get("time-pos"), self.m.get("duration")
@@ -196,31 +196,51 @@ class App:
         for y in range(1, H - 1):
             scr.addstr(y, 0, "│")
             scr.addstr(y, W - 1, "│")
-        scr.addstr(H - 1, 0, "└" + "─" * (W - 2) + "┘")
+        try:
+            scr.addstr(H - 1, 0, "└" + "─" * (W - 2) + "┘")
+        except curses.error:
+            pass  # writing the last cell of the screen always errors; the text is drawn
         # now playing
         if cur is None:
             self.put(1, 2, "nothing playing - press o to pick a folder", curses.A_DIM)
         else:
             self.put(1, 2, ("❚❚ " if paused else "▶ ") + (title or ""), curses.A_BOLD)
             self.put(2, 4, os.path.basename(self.folder or ""), curses.A_DIM)
-            self.put(3, 4, f"{mmss(pos)} {bar((pos or 0) / dur if dur else 0, W - 18, '━')} {mmss(dur)}")
+            self.put(3, 4, f"{mmss(pos)} {bar((pos or 0) / dur if dur else 0, max(1, W - 18), '━')} {mmss(dur)}")
         # queue
+        nxt = pl[cur + 1:] if cur is not None else []
         rep = "on" if loop not in (False, None, "no") else "off"
-        self.put(5, 2, "Up next", curses.A_DIM)
+        self.put(5, 2, f"Up next ({len(nxt)})", curses.A_DIM)
         status = f"shuffle {'on' if self.shuffle else 'off'} · repeat {rep}"
         self.put(5, W - 3 - len(status), status, curses.A_DIM)
-        nxt = pl[cur + 1:] if cur is not None else []
-        for i, e in enumerate(nxt[: H - 8 - 6]):
+        rows = H - 10
+        names = [e["filename"] for e in nxt]
+        self.qi = names.index(self.qpath) if self.qpath in names else 0
+        start = max(0, min(self.qi - rows // 2, len(nxt) - rows))
+        for i, e in enumerate(nxt[start:start + rows]):
             name = os.path.splitext(os.path.basename(e["filename"]))[0]
-            self.put(6 + i, 4, name)
+            self.put(6 + i, 2, "> " if start + i == self.qi else "  ", curses.A_BOLD)
+            self.put(6 + i, 4, name, curses.A_REVERSE if start + i == self.qi else 0)
         # controls
-        bw = W - 16
-        self.put(H - 6, 2, f"vol   {bar(self.vol / 100, bw)} {self.vol:>3}")
-        self.put(H - 5, 2, f"bass  {bar((self.bass + GAIN) / (2 * GAIN), bw)} {self.bass:>+3}")
-        self.put(H - 4, 2, f"treb  {bar((self.treble + GAIN) / (2 * GAIN), bw)} {self.treble:>+3}")
-        self.put(H - 3, 2, "space pause  ←/→ seek  n/p skip  o folder  / search", curses.A_DIM)
-        self.put(H - 2, 2, "r repeat  s shuffle  ↑↓ vol  b/B bass  t/T treb  f flat  q quit", curses.A_DIM)
+        self.put(H - 4, 2, f"vol {self.vol}   bass {self.bass:+d}   treb {self.treble:+d}", curses.A_BOLD)
+        self.put(H - 3, 2, "space pause  h/l seek  </> skip  j/k move  enter play  / search  o folder", curses.A_DIM)
+        self.put(H - 2, 2, "[/] vol  b/B bass  t/T treb  f flat  r repeat  s shuffle  q quit", curses.A_DIM)
         scr.refresh()
+
+    def move(self, step):
+        """Move the queue cursor by step rows (clamped)."""
+        pl, cur = self.current()
+        nxt = [e["filename"] for e in pl[cur + 1:]] if cur is not None else []
+        if nxt:
+            self.qpath = nxt[max(0, min(len(nxt) - 1, self.qi + step))]
+
+    def play_selected(self):
+        pl, cur = self.current()
+        if cur is None or cur + 1 + self.qi >= len(pl):
+            return
+        if self.qi:  # bring the chosen track to the front, keep the rest of the queue
+            self.m.cmd("playlist-move", cur + 1 + self.qi, cur + 1)
+        self.m.cmd("playlist-next")
 
     # ---- chooser (folder picker and search) ----
     def choose(self, items, prompt):
@@ -234,7 +254,7 @@ class App:
             scr.erase()
             h, w = scr.getmaxyx()
             scr.addnstr(0, 0, f"{prompt}> {filt}", w - 1, curses.A_BOLD)
-            scr.addnstr(1, 0, "enter play   esc cancel   type to filter", w - 1, curses.A_DIM)
+            scr.addnstr(1, 0, "enter play   esc cancel   type to filter   up/down or ctrl-p/ctrl-n to move", w - 1, curses.A_DIM)
             rows = h - 3
             start = max(0, min(sel - rows // 2, len(shown) - rows))
             for i, (_, label) in enumerate(shown[start:start + rows]):
@@ -246,9 +266,9 @@ class App:
             elif k in (10, curses.KEY_ENTER) and shown:
                 result = shown[sel][0]
                 break
-            elif k == curses.KEY_UP:
+            elif k in (curses.KEY_UP, 16):
                 sel -= 1
-            elif k == curses.KEY_DOWN:
+            elif k in (curses.KEY_DOWN, 14):
                 sel += 1
             elif k in (curses.KEY_BACKSPACE, 127, 8):
                 filt, sel = filt[:-1], 0
@@ -283,17 +303,31 @@ class App:
                 return
             elif k == ord(" "):
                 self.m.cmd("cycle", "pause")
-            elif k == ord("n"):
+            elif k == ord(">"):
                 self.m.cmd("playlist-next")
-            elif k == ord("p"):
+            elif k == ord("<"):
                 self.m.cmd("playlist-prev")
-            elif k == curses.KEY_RIGHT:
+            elif k in (curses.KEY_RIGHT, ord("l")):
                 self.m.cmd("seek", 5, "relative")
-            elif k == curses.KEY_LEFT:
+            elif k in (curses.KEY_LEFT, ord("h")):
                 self.m.cmd("seek", -5, "relative")
-            elif k in (curses.KEY_UP, ord("+"), ord("=")):
+            elif k in (curses.KEY_DOWN, ord("j")):
+                self.move(1)
+            elif k in (curses.KEY_UP, ord("k")):
+                self.move(-1)
+            elif k == 4:  # ctrl-d
+                self.move(max(1, (self.scr.getmaxyx()[0] - 10) // 2))
+            elif k == 21:  # ctrl-u
+                self.move(-max(1, (self.scr.getmaxyx()[0] - 10) // 2))
+            elif k == ord("g"):
+                self.move(-10**9)
+            elif k == ord("G"):
+                self.move(10**9)
+            elif k in (10, curses.KEY_ENTER):
+                self.play_selected()
+            elif k == ord("]"):
                 self.adjust("vol", 5, 0, 100)
-            elif k in (curses.KEY_DOWN, ord("-")):
+            elif k == ord("["):
                 self.adjust("vol", -5, 0, 100)
             elif k == ord("b"):
                 self.adjust("bass", 1, -GAIN, GAIN)
