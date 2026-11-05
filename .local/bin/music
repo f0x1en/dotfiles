@@ -109,7 +109,8 @@ class App:
             self.__dict__.update(json.load(open(STATE)))
         except (OSError, ValueError):
             pass
-        self.folder, self.files, self.qpath = None, [], None  # qpath: track under the queue cursor
+        self.folder, self.files = None, []
+        self.qpath, self.qi, self.follow, self.last_cur = None, 0, True, None  # queue cursor
         self.apply_audio()
 
     def save(self):
@@ -128,20 +129,16 @@ class App:
             self.requeue()
 
     def reorder(self):
-        """Re-order only the upcoming tracks; the playing track is not touched."""
+        """Re-order only the upcoming tracks; the playing track and the history stay."""
         pl, cur = self.current()
-        if cur is None:
+        up = [e["filename"] for e in pl[cur + 1:]] if cur is not None else []
+        if not up:
             return
-        now = pl[cur]["filename"]
-        if self.shuffle:
-            rest = [f for f in smart_order(self.files) if f != now]
-        else:
-            i = self.files.index(now) if now in self.files else -1
-            rest = self.files[i + 1:] + self.files[:i]
-        self.m.cmd("playlist-clear")  # keeps the playing entry
-        if rest:
-            open(LIST, "w").write("\n".join(rest) + "\n")
-            self.m.cmd("loadlist", LIST, "append")
+        for i in range(len(pl) - 1, cur, -1):
+            self.m.cmd("playlist-remove", i)
+        new = smart_order(up) if self.shuffle else sorted(up)
+        open(LIST, "w").write("\n".join(new) + "\n")
+        self.m.cmd("loadlist", LIST, "append")
 
     def requeue(self):
         order = smart_order(self.files) if self.shuffle else list(self.files)
@@ -157,10 +154,12 @@ class App:
 
     def play_now(self, path):
         pl, cur = self.current()
-        for i, e in enumerate(pl):
-            if e["filename"] == path and cur is not None and i > cur:
-                self.m.cmd("playlist-remove", i)  # already coming up later: play it once
-                break
+        if cur is not None and pl[cur]["filename"] == path:
+            self.m.cmd("seek", 0, "absolute")
+            return
+        for i in range(len(pl) - 1, -1, -1):
+            if pl[i]["filename"] == path:
+                self.m.cmd("playlist-remove", i)  # keep a single copy in the list
         self.m.cmd("loadfile", path, "replace" if cur is None else "insert-next")
         if cur is not None:
             self.m.cmd("playlist-next")
@@ -207,20 +206,28 @@ class App:
             self.put(1, 2, ("❚❚ " if paused else "▶ ") + (title or ""), curses.A_BOLD)
             self.put(2, 4, os.path.basename(self.folder or ""), curses.A_DIM)
             self.put(3, 4, f"{mmss(pos)} {bar((pos or 0) / dur if dur else 0, max(1, W - 18), '━')} {mmss(dur)}")
-        # queue
-        nxt = pl[cur + 1:] if cur is not None else []
+        # queue: the whole list; played tracks are dimmed
+        n = len(pl)
+        left = n - cur - 1 if cur is not None else 0
         rep = "on" if loop not in (False, None, "no") else "off"
-        self.put(5, 2, f"Up next ({len(nxt)})", curses.A_DIM)
+        self.put(5, 2, f"Queue · {left} up next · {cur or 0} played", curses.A_DIM)
         status = f"shuffle {'on' if self.shuffle else 'off'} · repeat {rep}"
         self.put(5, W - 3 - len(status), status, curses.A_DIM)
+        if cur != self.last_cur:
+            self.last_cur, self.follow = cur, True  # cursor follows the playing track
+        names = [e["filename"] for e in pl]
+        self.qi = cur or 0 if self.follow or self.qpath not in names else names.index(self.qpath)
         rows = H - 10
-        names = [e["filename"] for e in nxt]
-        self.qi = names.index(self.qpath) if self.qpath in names else 0
-        start = max(0, min(self.qi - rows // 2, len(nxt) - rows))
-        for i, e in enumerate(nxt[start:start + rows]):
-            name = os.path.splitext(os.path.basename(e["filename"]))[0]
-            self.put(6 + i, 2, "> " if start + i == self.qi else "  ", curses.A_BOLD)
-            self.put(6 + i, 4, name, curses.A_REVERSE if start + i == self.qi else 0)
+        start = max(0, min(self.qi - rows // 2, n - rows))
+        for i in range(start, min(n, start + rows)):
+            name = os.path.splitext(os.path.basename(names[i]))[0]
+            attr = curses.A_DIM if cur is not None and i < cur else 0
+            if i == cur:
+                attr |= curses.A_BOLD
+            if i == self.qi:
+                attr |= curses.A_REVERSE
+            self.put(6 + i - start, 2, ">" if i == self.qi else " ")
+            self.put(6 + i - start, 4, ("▶ " if i == cur else "  ") + name, attr)
         # controls
         self.put(H - 4, 2, f"vol {self.vol}   bass {self.bass:+d}   treb {self.treble:+d}", curses.A_BOLD)
         self.put(H - 3, 2, "space pause  h/l seek  </> skip  j/k move  enter play  / search  o folder", curses.A_DIM)
@@ -229,17 +236,21 @@ class App:
 
     def move(self, step):
         """Move the queue cursor by step rows (clamped)."""
-        pl, cur = self.current()
-        nxt = [e["filename"] for e in pl[cur + 1:]] if cur is not None else []
-        if nxt:
-            self.qpath = nxt[max(0, min(len(nxt) - 1, self.qi + step))]
+        pl, _ = self.current()
+        if pl:
+            self.qi = max(0, min(len(pl) - 1, self.qi + step))
+            self.qpath, self.follow = pl[self.qi]["filename"], False
 
     def play_selected(self):
+        """Play the track under the cursor now, then carry on with the queue."""
         pl, cur = self.current()
-        if cur is None or cur + 1 + self.qi >= len(pl):
+        if not pl or self.qi == cur:
             return
-        if self.qi:  # bring the chosen track to the front, keep the rest of the queue
-            self.m.cmd("playlist-move", cur + 1 + self.qi, cur + 1)
+        if cur is None:
+            self.m.cmd("playlist-play-index", self.qi)
+            return
+        if self.qi != cur + 1:
+            self.m.cmd("playlist-move", self.qi, cur + 1)
         self.m.cmd("playlist-next")
 
     # ---- chooser (folder picker and search) ----
@@ -277,8 +288,38 @@ class App:
         scr.timeout(250)
         return result
 
+    def menu(self, items, prompt):
+        """items: [(value, label)]. j/k move, enter picks, esc or q cancels. Returns value or None."""
+        sel, scr, result = 0, self.scr, None
+        scr.timeout(-1)
+        while items:
+            scr.erase()
+            h, w = scr.getmaxyx()
+            scr.addnstr(0, 0, prompt, w - 1, curses.A_BOLD)
+            scr.addnstr(1, 0, "j/k move   g/G top/bottom   enter play   esc cancel", w - 1, curses.A_DIM)
+            rows = max(1, h - 3)
+            start = max(0, min(sel - rows // 2, len(items) - rows))
+            for i in range(start, min(len(items), start + rows)):
+                scr.addnstr(3 + i - start, 0, f" {items[i][1]}".ljust(w - 1), w - 1, curses.A_REVERSE if i == sel else 0)
+            k = scr.getch()
+            if k in (27, ord("q"), 3):
+                break
+            elif k in (10, curses.KEY_ENTER):
+                result = items[sel][0]
+                break
+            elif k in (curses.KEY_DOWN, ord("j"), 14):
+                sel = min(sel + 1, len(items) - 1)
+            elif k in (curses.KEY_UP, ord("k"), 16):
+                sel = max(sel - 1, 0)
+            elif k == ord("g"):
+                sel = 0
+            elif k == ord("G"):
+                sel = len(items) - 1
+        scr.timeout(250)
+        return result
+
     def pick(self):
-        folder = self.choose([(d, f"{label}  ({n})") for d, label, n in audio_folders()], "folder")
+        folder = self.menu([(d, f"{label}  ({n})") for d, label, n in audio_folders()], "folder")
         if folder:
             self.load(folder)
 
@@ -360,6 +401,7 @@ def main():
         start = os.path.realpath(sys.argv[1])
         if not os.path.isdir(start):
             raise SystemExit(f"not a folder: {sys.argv[1]}")
+    os.environ.setdefault("ESCDELAY", "25")
     mpv = Mpv()
     for sig in (signal.SIGHUP, signal.SIGTERM):
         signal.signal(sig, lambda *_: sys.exit(0))
