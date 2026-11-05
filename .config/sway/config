@@ -88,8 +88,11 @@ bindsym $mod+Shift+n exec kitty --title wlctl wlctl
 bindsym $mod+Shift+b exec kitty --title bluetui bluetui
 # Audio
 bindsym $mod+Shift+a exec kitty --title wiremix wiremix --tab playback
-# Music
-bindsym $mod+m exec kitty --title music music
+# Music: mod+m shows or hides the player (it keeps playing); mod+F7/F8/F9 prev, pause, next
+bindsym $mod+m exec ~/.config/sway/scripts/music-toggle
+bindsym $mod+F7 exec ~/.local/bin/music prev
+bindsym $mod+F8 exec ~/.local/bin/music pause
+bindsym $mod+F9 exec ~/.local/bin/music next
 # Clipboard
 bindsym $mod+c exec cliphist list | fuzzel --dmenu --with-nth 2 | cliphist decode | wl-copy
 # Focus
@@ -175,7 +178,7 @@ floating_modifier $mod
 for_window [title="^wlctl$"] floating enable, resize set width 900px height 600px
 for_window [title="^bluetui$"] floating enable, resize set width 900px height 600px
 for_window [title="^wiremix$"] floating enable, resize set width 900px height 600px
-for_window [title="^music$"] floating enable, resize set width 1000px height 640px, move position center
+for_window [title="^music$"] move scratchpad, scratchpad show, resize set width 90 ppt height 85 ppt, move position center
 for_window [title="^sway-help$"] floating enable, resize set width 760px height 620px, move position center
 
 ### XWayland

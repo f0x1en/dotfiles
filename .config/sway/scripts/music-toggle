@@ -1,0 +1,7 @@
+#!/bin/sh
+# mod+m: show or hide the music window. Music keeps playing while it is hidden.
+if swaymsg -t get_tree | jq -e '.. | select(.name? == "music")' >/dev/null 2>&1; then
+  swaymsg '[title="^music$"] scratchpad show' >/dev/null
+else
+  exec kitty --title music music
+fi
