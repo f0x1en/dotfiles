@@ -221,6 +221,18 @@ install_cargo_tools() {
     done
 }
 
+install_rtk() {
+    # Command-output compressor used by the Claude Code PreToolUse hook in
+    # ~/.claude/settings.json. The hook is a silent no-op when rtk is missing.
+    # Apache-2.0 hook-only build, pinned. Do NOT `cargo install rtk` from crates.io:
+    # that is a different, unrelated package.
+    command -v cargo >/dev/null 2>&1 || return 0
+    command -v rtk >/dev/null 2>&1 && return 0
+    say "Installing rtk (Apache-2.0 hook build, ~5 min)..."
+    cargo install --git https://github.com/rtk-ai/rtk --tag v1.1.0 --no-default-features rtk ||
+        warn "Could not install rtk (optional)."
+}
+
 install_local_overrides() {
     if [ ! -f "$HOME/.zshrc.local" ] && [ -f "$HOME/.zshrc.local.example" ]; then
         say "Creating ~/.zshrc.local from the example..."
@@ -245,6 +257,7 @@ install_local_overrides
 link_fd
 install_neovim_plugins
 install_cargo_tools
+install_rtk
 
 if command -v zsh >/dev/null 2>&1; then
     zsh -n "$HOME/.zshrc" || warn "~/.zshrc contains a syntax error."

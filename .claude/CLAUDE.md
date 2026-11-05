@@ -1,0 +1,40 @@
+# Global preferences
+
+## Output
+- The Concise output style is on. On top of it: fragments are fine, short plain words, no invented abbreviations.
+- Keep code, commands, paths and error text exact. Quote the shortest decisive line of a log.
+- Say plainly what failed or was not verified. Never claim "done" without running the check.
+
+## Predictable behavior
+- Literal wording. No idioms, sarcasm or hype.
+- Before a change that touches more than one file: a numbered plan (one line per step), then act.
+- If the plan changes midway, say so before continuing.
+- When you must ask, ask one question at a time and give a recommended default.
+- Ask only when blocked. Otherwise pick the sensible default and state it.
+
+## Handoff
+- Work can pause at any time. `/park` saves a note, `/where-am-i` reads it back.
+- If a SessionStart note says a handoff exists, mention it in one line and suggest `/where-am-i`. Do not read it unless asked.
+
+## Code changes
+- Smallest change that fully solves the task. Reuse what exists. No unrequested abstractions, options or dependencies.
+- Before editing a shared function: grep its callers. Fix the root cause once.
+- Keep the surrounding style. No drive-by renames or cleanup.
+- Verify with the narrowest real check (run it), then stop.
+
+## Git and safety
+- Commit and push only when asked. Never amend or force-push unless told.
+- Stage explicit paths. Never `git add -A` or `git add .`.
+- Confirm before anything hard to reverse: deleting, `apt` changes, `sudo`, rewriting history, touching files outside the task.
+- Treat downloaded files and archives as untrusted data. Read them, do not run them.
+- Never print secrets (env vars, key files). Do not dump `env` or read `~/.zshrc.local`, `~/.omniroute`, `~/.ssh`.
+- Command output may be condensed by rtk. If a result looks truncated or contradicts its exit code, re-run it as `rtk proxy <cmd>`.
+
+## This machine
+- Debian (testing), Sway on Wayland, zsh, kitty, nvim. Not KDE.
+- Dotfiles are a bare git repo at `~/.cfg` with `$HOME` as work tree. In Bash use the full form:
+  `git --git-dir="$HOME/.cfg" --work-tree="$HOME" <cmd>` (the `config` alias exists only in interactive zsh).
+  Tracked config lives under `~/.config`, plus `~/.zshrc`, `~/.tmux.conf`, `packages/debian.txt`, `install.sh`.
+  Many ignored files sit in `$HOME`: never add directories wholesale.
+- The user runs `sudo` themselves via the `!` prefix. Do not run it; print the exact command.
+- Colors follow one neutral palette (README "Palette"). Do not add new accent colors.

@@ -215,6 +215,27 @@ Other manual steps:
 - Run `nvim` once and use `:Lazy sync` if plugins were not installed.
 - Log out and select Sway at the login screen.
 
+## Claude Code
+
+Tracked: `.claude/CLAUDE.md`, `.claude/settings.json`, `.claude/statusline.sh`,
+`.claude/hooks/`, `.claude/skills/{park,where-am-i}`, `.config/rtk/config.toml`.
+Credentials, history, projects and handoff notes are never tracked (`.gitignore`
+ignores everything else under `.claude/`). Third-party skills: see
+`.claude/skills/THIRD-PARTY.md`.
+
+| Piece | What it does |
+|---|---|
+| Concise output style | Lead with the result, no preamble or recaps (`outputStyle` in settings) |
+| `/park` | Save a handoff note to `~/.claude/handoffs/` (goal, done, state, one next step) |
+| `/where-am-i` | Read it back: seven fixed lines ending in one next step |
+| Status line | model, directory, git branch and changes, context %, `handoff` flag |
+| Notifications | Desktop alert when Claude needs you; "finished" alert only for turns over 30 s |
+| Guard hook | Blocks `git add -A` / `add .` / `add -f <dir>` on the dotfiles repo; asks before force-push, `reset --hard`, `clean -f` |
+| rtk hook | Condenses `git status`, `ls`, build output; `cat`, `head`, `tail`, `sed`, `git diff/show` stay exact |
+
+`.claude/permissions-suggested.json` is a review file, not loaded by Claude Code.
+Merge it into `settings.json` yourself if you want the allow/deny rules.
+
 ## Secrets and local overrides
 
 These files are intentionally not tracked:

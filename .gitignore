@@ -206,7 +206,18 @@ modules/
 
 # Local app data not managed here
 .hermes/
-.claude/
+# Claude Code: track only our own config, never credentials/history/projects
+.claude/*
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/statusline.sh
+!.claude/permissions-suggested.json
+!.claude/hooks/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/park/
+!.claude/skills/where-am-i/
+!.claude/skills/THIRD-PARTY.md
 .claude.json
 .copilot/
 .aider
