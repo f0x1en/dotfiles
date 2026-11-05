@@ -120,10 +120,6 @@ class App:
         self.m.cmd("set_property", "volume", self.vol)
         for name in ("bass", "treble"):
             self.m.cmd("af-command", name, "gain", str(getattr(self, name)), name)
-        self.m.cmd("set_property", "volume-gain", -self.cut())  # boost never clips
-
-    def cut(self):
-        return max(0, self.bass, self.treble)
 
     def load(self, folder):
         self.files = tracks(folder)
@@ -131,12 +127,25 @@ class App:
             self.folder = folder
             self.requeue()
 
-    def requeue(self, first=None, pos=0):
+    def reorder(self):
+        """Re-order only the upcoming tracks; the playing track is not touched."""
+        pl, cur = self.current()
+        if cur is None:
+            return
+        now = pl[cur]["filename"]
+        if self.shuffle:
+            rest = [f for f in smart_order(self.files) if f != now]
+        else:
+            i = self.files.index(now) if now in self.files else -1
+            rest = self.files[i + 1:] + self.files[:i]
+        self.m.cmd("playlist-clear")  # keeps the playing entry
+        if rest:
+            open(LIST, "w").write("\n".join(rest) + "\n")
+            self.m.cmd("loadlist", LIST, "append")
+
+    def requeue(self):
         order = smart_order(self.files) if self.shuffle else list(self.files)
-        if first in order:
-            order.remove(first)
-            order.insert(0, first)
-        self.m.cmd("loadfile", order[0], "replace", -1, f"start={pos}")
+        self.m.cmd("loadfile", order[0], "replace")
         if len(order) > 1:
             open(LIST, "w").write("\n".join(order[1:]) + "\n")
             self.m.cmd("loadlist", LIST, "append")
@@ -176,7 +185,7 @@ class App:
             scr.addnstr(0, 0, "terminal too small", w - 1)
             scr.refresh()
             return
-        H, self.W = min(h, 24), min(w, 64)
+        H, self.W = min(h, 24), min(w, 68)
         W = self.W
         pl, cur = self.current()
         title = self.m.get("media-title")
@@ -205,13 +214,12 @@ class App:
             name = os.path.splitext(os.path.basename(e["filename"]))[0]
             self.put(6 + i, 4, name)
         # controls
-        bw = W - 30
-        note = f"  cut -{self.cut()} dB" if self.cut() else ""
-        self.put(H - 6, 2, f"vol   {bar(self.vol / 100, bw)} {self.vol:>3}{note}")
+        bw = W - 16
+        self.put(H - 6, 2, f"vol   {bar(self.vol / 100, bw)} {self.vol:>3}")
         self.put(H - 5, 2, f"bass  {bar((self.bass + GAIN) / (2 * GAIN), bw)} {self.bass:>+3}")
         self.put(H - 4, 2, f"treb  {bar((self.treble + GAIN) / (2 * GAIN), bw)} {self.treble:>+3}")
         self.put(H - 3, 2, "space pause  ←/→ seek  n/p skip  o folder  / search", curses.A_DIM)
-        self.put(H - 2, 2, "r repeat  s shuffle  ↑↓ vol  b/B bass  t/T treb  q quit", curses.A_DIM)
+        self.put(H - 2, 2, "r repeat  s shuffle  ↑↓ vol  b/B bass  t/T treb  f flat  q quit", curses.A_DIM)
         scr.refresh()
 
     # ---- chooser (folder picker and search) ----
@@ -295,15 +303,17 @@ class App:
                 self.adjust("treble", 1, -GAIN, GAIN)
             elif k == ord("T"):
                 self.adjust("treble", -1, -GAIN, GAIN)
+            elif k == ord("f"):
+                self.bass = self.treble = 0
+                self.apply_audio()
+                self.save()
             elif k == ord("r"):
                 on = self.m.get("loop-playlist") not in (False, None, "no")
                 self.m.cmd("set_property", "loop-playlist", "no" if on else "inf")
             elif k == ord("s"):
                 self.shuffle = not self.shuffle
                 self.save()
-                pl, cur = self.current()
-                if cur is not None:
-                    self.requeue(pl[cur]["filename"], self.m.get("time-pos") or 0)
+                self.reorder()
             elif k == ord("o"):
                 self.pick()
             elif k == ord("/"):
