@@ -39,6 +39,8 @@ exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DE
 exec_always pkill -x kanshi; exec /usr/bin/kanshi
 # status bar
 exec_always sh -c 'pkill -x waybar 2>/dev/null; exec waybar'
+# toggle status bar (waybar hides on SIGUSR1)
+bindsym $mod+Ctrl+b exec pkill -SIGUSR1 -x waybar
 # Notifications
 exec mako
 # Volume/brightness OSD
