@@ -1,6 +1,6 @@
 vim.opt.tabstop = 4        -- Width of an existing tab character
-vim.opt.shiftwidth = 4     -- Indentation width for >>, <<, and autoindent
-vim.opt.softtabstop = 4    -- Spaces inserted/deleted when pressing Tab/Backspace
+vim.opt.shiftwidth = 2     -- Indentation width for >>, <<, and autoindent
+vim.opt.softtabstop = 2    -- Spaces inserted/deleted when pressing Tab/Backspace
 vim.opt.expandtab = true   -- Use spaces instead of tab characters
 -- absolute current line
 vim.opt.number = true
