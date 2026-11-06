@@ -2,6 +2,7 @@
 
 ## Output
 - The Concise output style is on. On top of it: fragments are fine, short plain words, no invented abbreviations.
+- Caveman mode is the default in every session (user standing instruction, 2026-11-06). Follow the `caveman` skill from the first reply. It stays on until the user says "stop caveman" or "normal mode".
 - Keep code, commands, paths and error text exact. Quote the shortest decisive line of a log.
 - Say plainly what failed or was not verified. Never claim "done" without running the check.
 
