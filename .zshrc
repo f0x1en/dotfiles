@@ -70,8 +70,13 @@ zle-line-init() {
 zle -N zle-keymap-select
 zle -N zle-line-init
 
-# System clipboard: paste before cursor, yank
+# System clipboard: p pastes after cursor, P before, y yanks (normal and visual)
 paste-clipboard() {
+    CUTBUFFER=$(wl-paste --no-newline) || return
+    zle .vi-put-after
+}
+
+paste-clipboard-before() {
     CUTBUFFER=$(wl-paste --no-newline) || return
     zle .vi-put-before
 }
@@ -82,10 +87,12 @@ yank-clipboard() {
 }
 
 zle -N paste-clipboard
+zle -N paste-clipboard-before
 zle -N yank-clipboard
 bindkey -M vicmd p paste-clipboard
-bindkey -M vicmd P paste-clipboard
+bindkey -M vicmd P paste-clipboard-before
 bindkey -M vicmd y yank-clipboard
+bindkey -M visual y yank-clipboard
 
 # ── Functions ────────────────────────────────────────────────
 # L in normal mode: list the current directory
