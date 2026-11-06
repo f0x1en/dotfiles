@@ -18,3 +18,6 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.formatoptions:remove({ "r", "o" })
   end,
 })
+
+-- keep shiftwidth/softtabstop from options above in markdown (nvim's ftplugin sets 4)
+vim.g.markdown_recommended_style = 0
