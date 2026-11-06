@@ -96,6 +96,10 @@ bindkey -M vicmd p paste-clipboard
 bindkey -M vicmd P paste-clipboard-before
 bindkey -M vicmd y yank-clipboard
 bindkey -M visual y yank-clipboard
+# Terminal paste (ctrl+shift+v) in normal mode: swallow it, do nothing
+ignore-paste() { zle .bracketed-paste PASTED_IGNORED; }
+zle -N ignore-paste
+bindkey -M vicmd '^[[200~' ignore-paste
 
 # ── Functions ────────────────────────────────────────────────
 # L in normal mode: list the current directory
