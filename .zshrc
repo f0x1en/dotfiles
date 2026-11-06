@@ -26,6 +26,10 @@ bindkey -v
 bindkey -M viins 'jk' vi-cmd-mode
 bindkey -M viins '^R' history-incremental-pattern-search-backward
 
+# Backspace (^? and ^H) deletes freely in insert mode
+bindkey -M viins '^?' backward-delete-char
+bindkey -M viins '^H' backward-delete-char
+
 # Text objects for quotes and brackets
 autoload -Uz select-quoted select-bracketed
 zle -N select-quoted
@@ -63,8 +67,7 @@ zle-keymap-select() {
 }
 
 zle-line-init() {
-    zle -K vicmd
-    print -n '\e[2 q'
+    print -n '\e[6 q'
 }
 
 zle -N zle-keymap-select
