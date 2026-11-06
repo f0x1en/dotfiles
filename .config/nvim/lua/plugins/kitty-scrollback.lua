@@ -5,9 +5,7 @@ return {
     cmd = { "KittyScrollbackGenerateKittens", "KittyScrollbackCheckHealth", "KittyScrollbackGenerateCommandLineEditing" },
     event = { "User KittyScrollbackLaunch" },
     config = function()
-      require("kitty-scrollback").setup({
-        paste_window = { yank_register_enabled = false, hide_footer = true },
-      })
+      require("kitty-scrollback").setup()
     end,
   },
 }
