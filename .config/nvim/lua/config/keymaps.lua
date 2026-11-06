@@ -88,3 +88,12 @@ vim.keymap.set("n", "<leader>uw", "<cmd>set wrap!<CR>", {
 })
 -- Clear search highlights
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Clear search highlighting" })
+
+-- gx: open path/URL under cursor (or selection) without waiting for the app to exit
+vim.keymap.set("n", "gx", function()
+  vim.ui.open(vim.fn.expand("<cfile>"))
+end, { desc = "Open path or URL" })
+vim.keymap.set("x", "gx", function()
+  local text = table.concat(vim.fn.getregion(vim.fn.getpos("v"), vim.fn.getpos(".")), "")
+  vim.ui.open(text)
+end, { desc = "Open selection" })
