@@ -25,7 +25,7 @@
 - Use the `ponytail` skill on coding tasks (writing, fixing, refactoring, reviewing). Search the web for existing tools before building anything new.
 
 ## Git and safety
-- After a finished change, commit and push without asking (user standing instruction, 2026-11-05). Never amend or force-push unless told. No Claude attribution lines in commits or PRs.
+- After a finished change, commit without asking. Push only at a completed milestone, not after every commit (user standing instruction, 2026-11-06, replaces the 2026-11-05 push-every-change rule). Never amend or force-push unless told. No Claude attribution lines in commits or PRs.
 - Push needs the key agent: `SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/claude-ssh-agent.sock" GIT_SSH_COMMAND="ssh -o BatchMode=yes"`. If the agent is gone (after reboot), ask the user to run `ssh-add` via the `!` prefix.
 - Stage explicit paths. Never `git add -A` or `git add .`.
 - Confirm before anything hard to reverse: deleting, `apt` changes, `sudo`, rewriting history, touching files outside the task.
