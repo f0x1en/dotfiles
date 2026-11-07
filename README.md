@@ -184,6 +184,11 @@ curl -fsSL https://raw.githubusercontent.com/f0x1en/dotfiles/main/install.sh -o 
 sh /tmp/dotfiles-install.sh
 ```
 
+If GitHub hangs, start the proxy on `127.0.0.1:10808` and add
+`-x http://127.0.0.1:10808` to the `curl` line. The installer then uses that
+proxy by itself for all downloads when it answers. Use another proxy with
+`DOTFILES_PROXY=http://host:port sh ...`, or turn it off with `DOTFILES_PROXY=none`.
+
 The installer is safe to re-run. Existing conflicting configuration files are
 backed up under `~/.dotfiles-backup-TIMESTAMP` before checkout.
 

@@ -6,6 +6,16 @@ CFG="${DOTFILES_GIT_DIR:-$HOME/.cfg}"
 WORK_TREE="${DOTFILES_WORK_TREE:-$HOME}"
 
 say() { printf '%s\n' "$*"; }
+# Use the local proxy for every download (git, curl, cargo, rustup) when it answers.
+# Override with DOTFILES_PROXY=http://host:port, or DOTFILES_PROXY=none to disable.
+PROXY="${DOTFILES_PROXY:-http://127.0.0.1:10808}"
+if [ "$PROXY" != none ] && command -v curl >/dev/null 2>&1 &&
+    curl -sI --connect-timeout 3 -m 10 -x "$PROXY" -o /dev/null https://github.com 2>/dev/null; then
+    export http_proxy="$PROXY" https_proxy="$PROXY" HTTP_PROXY="$PROXY" HTTPS_PROXY="$PROXY"
+    export no_proxy=localhost,127.0.0.1,::1 NO_PROXY=localhost,127.0.0.1,::1
+    printf 'Using proxy %s\n' "$PROXY"
+fi
+
 warnings=""
 warn() {
     printf 'warning: %s\n' "$*" >&2
