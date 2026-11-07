@@ -70,6 +70,19 @@ fi
 
 say "Installing Debian packages..."
 apt_run update
+
+# One unknown package aborts the whole install (e.g. yazi, scrcpy on Debian 13).
+available=$(mktemp "$tmp/avail.XXXXXX")
+for package in "$@"; do
+    if apt-cache show "$package" >/dev/null 2>&1; then
+        printf '%s\n' "$package" >>"$available"
+    else
+        warn "package not available, skipping: $package"
+    fi
+done
+set --
+while IFS= read -r package; do set -- "$@" "$package"; done <"$available"
+
 apt_run install -y --no-install-recommends "$@"
 
 backup="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
@@ -233,6 +246,22 @@ install_rtk() {
         warn "Could not install rtk (optional)."
 }
 
+install_yazi() {
+    # Not packaged in Debian 13. Static release binary, x86_64 only.
+    command -v yazi >/dev/null 2>&1 && return 0
+    [ "$(uname -m)" = x86_64 ] || return 0
+    command -v unzip >/dev/null 2>&1 || return 0
+    say "Installing yazi from the GitHub release..."
+    if curl -fsSL \
+        "https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-musl.zip" \
+        -o "$tmp/yazi.zip" && unzip -oq "$tmp/yazi.zip" -d "$tmp/yazi"; then
+        mkdir -p "$HOME/.local/bin"
+        install -m 755 "$tmp"/yazi/*/yazi "$tmp"/yazi/*/ya "$HOME/.local/bin/"
+    else
+        warn "Could not install yazi (optional)."
+    fi
+}
+
 install_local_overrides() {
     if [ ! -f "$HOME/.zshrc.local" ] && [ -f "$HOME/.zshrc.local.example" ]; then
         say "Creating ~/.zshrc.local from the example..."
@@ -255,6 +284,7 @@ install_fonts
 install_aria2_config
 install_local_overrides
 link_fd
+install_yazi
 install_neovim_plugins
 install_cargo_tools
 install_rtk

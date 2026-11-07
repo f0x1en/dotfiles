@@ -157,8 +157,18 @@ installs the packages listed in `packages/debian.txt`, checks out tracked files
 into their normal locations under your home directory, and prepares the shell,
 tmux, Neovim, and fonts.
 
-The package list targets Debian testing/sid; some package names differ on older
-Debian releases.
+The package list targets Debian testing/sid. On Debian 13 (trixie) `yazi` and
+`scrcpy` are not packaged: the installer skips unknown packages with a warning,
+and fetches `yazi` from its GitHub release. Install `scrcpy` by hand if needed.
+`cargo` is 1.85 there, so a `cargo install` tool that needs a newer Rust only
+warns.
+
+On a minimal install (no desktop, e.g. a VM) the installer pulls in the whole
+Sway stack and `sddm`, which then owns the login screen. A normal user needs
+`sudo` first (`su -`, then `apt-get install sudo git curl ca-certificates` and
+`usermod -aG sudo USER`, then log in again). Do not run the installer as root:
+it would configure `/root`. In VMware enable 3D acceleration, or start Sway with
+`WLR_RENDERER=pixman`; add `open-vm-tools` for clipboard and resize.
 
 Install Git and curl first:
 

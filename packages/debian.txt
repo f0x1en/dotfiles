@@ -30,6 +30,8 @@ polkitd
 lxpolkit
 udiskie
 sddm
+sddm-theme-debian-breeze
+libpam-systemd
 xdg-desktop-portal-wlr
 
 # Shell and terminal tools
