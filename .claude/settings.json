@@ -1,71 +1,11 @@
 {
-  "model": "sonnet",
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/guard.sh"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/turn-timer.sh start"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/turn-timer.sh end"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "permission_prompt|idle_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/notify.sh"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/session-start.sh"
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
+  "env": {
+    "HTTP_PROXY": "http://127.0.0.1:10808",
+    "HTTPS_PROXY": "http://127.0.0.1:10808",
+    "http_proxy": "http://127.0.0.1:10808",
+    "https_proxy": "http://127.0.0.1:10808",
+    "NO_PROXY": "localhost,127.0.0.1,::1",
+    "no_proxy": "localhost,127.0.0.1,::1"
   },
   "attribution": {
     "commit": "",
@@ -145,6 +85,109 @@
       "Read(~/.zshrc.local)"
     ]
   },
+  "model": "sonnet",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/guard.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/turn-timer.sh start"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/turn-timer.sh end"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/notify.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
   "outputStyle": "Concise",
-  "theme": "dark-ansi"
+  "theme": "dark-ansi",
+  "editorMode": "vim",
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: unknown — repo at /home/user has no remotes configured and gh lookup was not queryable (no origin remote); this is a personal dotfiles checkout, not pushed anywhere currently — treat as private by default but no remote exists to push to",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: unknown — no remotes configured, gh check not queryable",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine (Debian/Sway desktop) with open internet",
+      "**Source control**: The trusted repo (this dotfiles checkout at /home/user, bare git dir ~/.cfg) only — no remote configured, no additional orgs",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured — bucket-like names found in config scan (bucket, bucket_name, my-bucket, my_bucket, mybucket, translation_test, another_bucket, etc.) are generic placeholder/example names spread across many files in what appears to be sibling checkouts, not org-identifying prefixes, and are not corroborated by any usage/transcript bucket evidence — omitted",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: credential and secret files under this home directory — e.g. .claude/.credentials.json, .hermes/.env and its backups/locks, .omniroute/.env, .local/share/jupyter/notebook_secret, .vault-token, *.key, *.token, .git-credentials, .config/git/credentials — share only with the user themselves, never commit or transmit",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (default heuristic); note k8s namespace usage seen (install, clipboard, conceal) does not match this pattern",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: personal dotfiles management and software development (Sway/Zsh/Neovim/Kitty config repo)",
+      "**Trusted repo**: the bare git repo at ~/.cfg with $HOME as work tree (this project, /home/user) — no remote configured",
+      "**Org-specific CLIs**: None configured — personal tool wrappers in routine use: rtk, swaymsg, kitty, omniroute, fuzzel, makoctl, mpv, pactl, wob, zoxide, config (bare-repo git alias)",
+      "routine under ~/.cfg (bare repo) prefix: config/git operations against $HOME work tree are expected and routine for this user"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add -A*)",
+      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add .*)"
+    ]
+  }
 }
