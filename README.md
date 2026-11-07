@@ -199,6 +199,8 @@ backed up under `~/.dotfiles-backup-TIMESTAMP` before checkout.
 8. Creates `~/.config/aria2/aria2.conf` with a random RPC secret.
 9. Installs Neovim plugins with `lazy.nvim`.
 10. Installs `wiremix`, `bluetui`, and `wlctl` with Cargo when Cargo is available.
+11. Enables the user `ssh-agent.socket`. Copy your SSH key to `~/.ssh` yourself;
+    Sway asks for its passphrase at login (`ssh-add` with zenity).
 
 The installer does not run `apt autoremove`, configure API keys or credentials,
 or install third-party applications that are not in Debian.

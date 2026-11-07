@@ -12,6 +12,8 @@ xdg-utils
 desktop-file-utils
 shared-mime-info
 iproute2
+openssh-client
+zenity
 
 # Sway desktop
 sway

@@ -270,6 +270,12 @@ install_local_overrides() {
     fi
 }
 
+enable_ssh_agent() {
+    # Sway runs ssh-add against $XDG_RUNTIME_DIR/openssh_agent at login.
+    systemctl --user enable ssh-agent.socket >/dev/null 2>&1 ||
+        warn "Could not enable ssh-agent.socket. Run after login: systemctl --user enable --now ssh-agent.socket"
+}
+
 link_fd() {
     if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
         mkdir -p "$HOME/.local/bin"
@@ -284,6 +290,7 @@ install_fonts
 install_aria2_config
 install_local_overrides
 link_fd
+enable_ssh_agent
 install_yazi
 install_neovim_plugins
 install_cargo_tools
