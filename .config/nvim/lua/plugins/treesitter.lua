@@ -13,6 +13,7 @@ return {
         "vimdoc",
         "markdown",
         "markdown_inline",
+        "html",
         "python",
         "c",
       })

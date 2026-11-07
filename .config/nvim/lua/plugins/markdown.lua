@@ -6,7 +6,15 @@ return {
       "nvim-tree/nvim-web-devicons",
     },
     ft = { "markdown" },
-    opts = {},
+    opts = {
+      -- hide <sup>/<br> tags; no real superscript in a terminal, so dim the text
+      html = {
+        tag = {
+          sup = { scope_highlight = "Comment" },
+          br = { icon = " ⏎ ", highlight = "Comment" },
+        },
+      },
+    },
     keys = {
       {
         "<leader>mt",
