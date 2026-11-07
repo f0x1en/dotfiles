@@ -195,6 +195,14 @@ mdpdf() {
 #         command reels "$@"
 # }
 
+# Claude Code through the local mixed proxy (no TUN needed)
+claude() {
+    local p=http://127.0.0.1:10808
+    HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
+    NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
+        command claude "$@"
+}
+
 # opencode() {
 #     local p=http://127.0.0.1:10808
 #     HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
