@@ -1,0 +1,13 @@
+[Unit]
+Description=Block direct Anthropic traffic for the main user (proxy only)
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/claude-killswitch.nft
+ExecStop=/usr/sbin/nft delete table inet claude_killswitch
+
+[Install]
+WantedBy=multi-user.target

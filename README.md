@@ -201,6 +201,11 @@ backed up under `~/.dotfiles-backup-TIMESTAMP` before checkout.
 10. Installs `wiremix`, `bluetui`, and `wlctl` with Cargo when Cargo is available.
 11. Enables the user `ssh-agent.socket`. Copy your SSH key to `~/.ssh` yourself;
     Sway asks for its passphrase at login (`ssh-add` with zenity).
+12. Installs the Claude killswitch from `packages/claude-killswitch.*` into
+    `/etc` (nftables rule for your uid, systemd service). It rejects direct
+    traffic to Anthropic, so `claude` only works through the proxy at
+    `127.0.0.1:10808` (the `claude()` function in `.zshrc`). Start that proxy
+    first, or remove the rule: `sudo systemctl disable --now claude-killswitch`.
 
 The installer does not run `apt autoremove`, configure API keys or credentials,
 or install third-party applications that are not in Debian.
@@ -310,4 +315,11 @@ git --git-dir="$HOME/.cfg" --work-tree="$HOME" status
 - Yazi uses Kitty's graphics protocol for image previews.
 - GTK, cursor, and icon theme names must be installed separately if you want the
   exact desktop appearance.
+- `.config/NetworkManager/dispatcher.d/90-netpref` is not active by itself:
+  NetworkManager only reads `/etc/NetworkManager/dispatcher.d/`. It also
+  hardcodes the interface names `wlp0s20f3` and `enp2s0`, as does
+  `.local/bin/netpref`. Edit both before using them on another machine.
+- Not installed by the installer: Claude Code itself, and the `caveman`,
+  `ponytail` and other third-party skills named in `.claude/CLAUDE.md`
+  (see `.claude/skills/THIRD-PARTY.md`).
 - Review the configuration before using it on another machine.

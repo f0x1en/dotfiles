@@ -14,6 +14,11 @@ shared-mime-info
 iproute2
 openssh-client
 zenity
+nftables
+python3
+pulseaudio-utils
+libglib2.0-bin
+dconf-gsettings-backend
 
 # Sway desktop
 sway

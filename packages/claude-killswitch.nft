@@ -1,0 +1,9 @@
+add table inet claude_killswitch
+delete table inet claude_killswitch
+table inet claude_killswitch {
+  chain out {
+    type filter hook output priority filter;
+    meta skuid __UID__ ip daddr 160.79.104.0/21 reject
+    meta skuid __UID__ ip6 daddr 2607:6bc0::/32 reject
+  }
+}

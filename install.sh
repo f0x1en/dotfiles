@@ -276,6 +276,28 @@ enable_ssh_agent() {
         warn "Could not enable ssh-agent.socket. Run after login: systemctl --user enable --now ssh-agent.socket"
 }
 
+install_killswitch() {
+    # Rejects direct Anthropic traffic for this user, so Claude Code only works
+    # through the local proxy (127.0.0.1:10808). Remove: sudo systemctl disable --now claude-killswitch
+    src="$HOME/packages"
+    [ -f "$src/claude-killswitch.nft" ] || return 0
+    command -v systemctl >/dev/null 2>&1 || return 0
+    if [ ! -x /usr/sbin/nft ]; then
+        warn "nft not found; skipping the Claude killswitch."
+        return 0
+    fi
+    say "Installing the Claude killswitch..."
+    uid=$(id -u)
+    sed "s|__UID__|$uid|g" "$src/claude-killswitch.nft" >"$tmp/claude-killswitch.nft"
+    {
+        as_root install -d -m 755 /etc/nftables.d &&
+        as_root install -m 644 "$tmp/claude-killswitch.nft" /etc/nftables.d/claude-killswitch.nft &&
+        as_root install -m 644 "$src/claude-killswitch.service" /etc/systemd/system/claude-killswitch.service &&
+        as_root systemctl daemon-reload &&
+        as_root systemctl enable --now claude-killswitch.service
+    } || warn "Could not install the Claude killswitch."
+}
+
 link_fd() {
     if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
         mkdir -p "$HOME/.local/bin"
@@ -291,6 +313,7 @@ install_aria2_config
 install_local_overrides
 link_fd
 enable_ssh_agent
+install_killswitch
 install_yazi
 install_neovim_plugins
 install_cargo_tools
