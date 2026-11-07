@@ -213,7 +213,7 @@ install_fonts() {
     if [ ! -f "$font_dir/JetBrainsMonoNerdFont-Regular.ttf" ]; then
         say "Installing JetBrainsMono Nerd Font..."
         archive="$tmp/JetBrainsMono.zip"
-        if retry curl -fsSL \
+        if retry curl -fSL --progress-bar \
             "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip" \
             -o "$archive"; then
             unzip -oq "$archive" -d "$font_dir" ||
@@ -260,7 +260,7 @@ install_release_bin() {
     command -v "$1" >/dev/null 2>&1 && return 0
     say "Installing $1 from the GitHub release..."
     mkdir -p "$HOME/.local/bin"
-    if retry curl -fsSL "$2" -o "$tmp/$1.bin"; then
+    if retry curl -fSL --progress-bar "$2" -o "$tmp/$1.bin"; then
         install -m 755 "$tmp/$1.bin" "$HOME/.local/bin/$1"
     else
         warn "Could not install $1 (Mod+Shift+B/N need bluetui/wlctl)."
@@ -320,7 +320,7 @@ install_yazi() {
     [ "$(uname -m)" = x86_64 ] || return 0
     command -v unzip >/dev/null 2>&1 || return 0
     say "Installing yazi from the GitHub release..."
-    if curl -fsSL \
+    if curl -fSL --progress-bar \
         "https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-musl.zip" \
         -o "$tmp/yazi.zip" && unzip -oq "$tmp/yazi.zip" -d "$tmp/yazi"; then
         mkdir -p "$HOME/.local/bin"
