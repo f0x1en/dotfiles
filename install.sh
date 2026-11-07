@@ -14,7 +14,15 @@ if [ "$PROXY" != none ] && command -v curl >/dev/null 2>&1 &&
     export http_proxy="$PROXY" https_proxy="$PROXY" HTTP_PROXY="$PROXY" HTTPS_PROXY="$PROXY"
     export no_proxy=localhost,127.0.0.1,::1 NO_PROXY=localhost,127.0.0.1,::1
     printf 'Using proxy %s\n' "$PROXY"
+    # sudo drops the proxy variables, so hand the proxy to apt explicitly.
+    APT_OPTS="-o Acquire::http::Proxy=$PROXY -o Acquire::https::Proxy=$PROXY"
+elif [ "$PROXY" != none ]; then
+    printf 'warning: proxy %s did not answer; downloading directly.\n' "$PROXY" >&2
 fi
+APT_OPTS="${APT_OPTS:-}"
+
+# Fail fast instead of hanging on a dead connection.
+curl() { command curl --connect-timeout 20 "$@"; }
 
 warnings=""
 warn() {
@@ -54,13 +62,13 @@ fi
 
 if [ "$(id -u)" -eq 0 ]; then
     as_root() { "$@"; }
-    apt_run() { DEBIAN_FRONTEND=noninteractive apt-get "$@"; }
+    apt_run() { DEBIAN_FRONTEND=noninteractive apt-get $APT_OPTS "$@"; }
 else
     if ! command -v sudo >/dev/null 2>&1; then
         die "Install sudo or run this script as root."
     fi
     as_root() { sudo "$@"; }
-    apt_run() { sudo env DEBIAN_FRONTEND=noninteractive apt-get "$@"; }
+    apt_run() { sudo env DEBIAN_FRONTEND=noninteractive apt-get $APT_OPTS "$@"; }
 fi
 
 if [ ! -d "$CFG" ]; then
