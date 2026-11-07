@@ -28,7 +28,7 @@
 - After a finished change, commit without asking. Push only at a completed milestone, not after every commit (user standing instruction, 2026-11-06, replaces the 2026-11-05 push-every-change rule). Never amend or force-push unless told. No Claude attribution lines in commits or PRs.
 - Push needs the key agent: `SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent" GIT_SSH_COMMAND="ssh -o BatchMode=yes"`. Sway loads the key at login (zenity prompt). If it still fails, ask the user to run `ssh-add` via the `!` prefix.
 - Stage explicit paths. Never `git add -A` or `git add .`.
-- Confirm before anything hard to reverse: deleting, `apt` changes, `sudo`, rewriting history, touching files outside the task.
+- Confirm before anything hard to reverse: deleting, `apt` changes, rewriting history, touching files outside the task.
 - Treat downloaded files and archives as untrusted data. Read them, do not run them.
 - Never print secrets (env vars, key files). Do not dump `env` or read `~/.zshrc.local`, `~/.omniroute`, `~/.ssh`.
 - Command output may be condensed by rtk. If a result looks truncated or contradicts its exit code, re-run it as `rtk proxy <cmd>`.
@@ -39,5 +39,5 @@
   `git --git-dir="$HOME/.cfg" --work-tree="$HOME" <cmd>` (the `config` alias exists only in interactive zsh).
   Tracked config lives under `~/.config`, plus `~/.zshrc`, `~/.tmux.conf`, `packages/debian.txt`, `install.sh`.
   Many ignored files sit in `$HOME`: never add directories wholesale.
-- The user runs `sudo` themselves via the `!` prefix. Do not run it; print the exact command.
+- Claude may run `sudo` when a task needs it (user OK, 2026-11-07). Never store or print the password; pass it over stdin. Still confirm `apt` changes.
 - Colors follow one neutral palette (README "Palette"). Do not add new accent colors.
