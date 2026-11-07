@@ -73,7 +73,6 @@
       "Bash(env)",
       "Bash(export -p*)",
       "Bash(printenv*)",
-      "Bash(sudo *)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(~/.aws/**)",
