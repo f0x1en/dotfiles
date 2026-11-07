@@ -6,7 +6,22 @@ CFG="${DOTFILES_GIT_DIR:-$HOME/.cfg}"
 WORK_TREE="${DOTFILES_WORK_TREE:-$HOME}"
 
 say() { printf '%s\n' "$*"; }
-warn() { printf 'warning: %s\n' "$*" >&2; }
+warnings=""
+warn() {
+    printf 'warning: %s\n' "$*" >&2
+    warnings="$warnings
+- $*"
+}
+
+# Run a command up to three times (GitHub downloads fail now and then).
+retry() {
+    n=1
+    while ! "$@"; do
+        [ "$n" -ge 3 ] && return 1
+        n=$((n + 1))
+        sleep 3
+    done
+}
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 if [ ! -r /etc/os-release ]; then
@@ -144,10 +159,11 @@ install_shell() {
 }
 
 install_omz() {
-    [ -d "$HOME/.oh-my-zsh" ] && return 0
+    [ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ] && return 0
     say "Installing Oh My Zsh..."
-    git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh" ||
-        warn "Could not install Oh My Zsh."
+    rm -rf "$HOME/.oh-my-zsh"
+    retry git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh" ||
+        warn "Could not install Oh My Zsh. Run: git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh"
 }
 
 install_tpm() {
@@ -179,7 +195,7 @@ install_fonts() {
     if [ ! -f "$font_dir/JetBrainsMonoNerdFont-Regular.ttf" ]; then
         say "Installing JetBrainsMono Nerd Font..."
         archive="$tmp/JetBrainsMono.zip"
-        if curl -fsSL \
+        if retry curl -fsSL \
             "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip" \
             -o "$archive"; then
             unzip -oq "$archive" -d "$font_dir" ||
@@ -221,17 +237,51 @@ install_neovim_plugins() {
     fi
 }
 
-install_cargo_tools() {
-    if ! command -v cargo >/dev/null 2>&1; then
-        say "cargo not found; skipping optional tools: wiremix, bluetui, wlctl."
-        return 0
+install_release_bin() {
+    # install_release_bin NAME URL: static musl binary into ~/.local/bin
+    command -v "$1" >/dev/null 2>&1 && return 0
+    say "Installing $1 from the GitHub release..."
+    mkdir -p "$HOME/.local/bin"
+    if retry curl -fsSL "$2" -o "$tmp/$1.bin"; then
+        install -m 755 "$tmp/$1.bin" "$HOME/.local/bin/$1"
+    else
+        warn "Could not install $1 (Mod+Shift+B/N need bluetui/wlctl)."
     fi
+}
 
-    for tool in wiremix bluetui wlctl; do
-        command -v "$tool" >/dev/null 2>&1 && continue
-        say "Installing $tool via cargo..."
-        cargo install "$tool" || warn "Could not install $tool."
-    done
+install_tui_tools() {
+    case "$(uname -m)" in
+        x86_64) arch=x86_64 ;;
+        aarch64) arch=aarch64 ;;
+        *) arch="" ;;
+    esac
+    if [ -n "$arch" ]; then
+        install_release_bin bluetui \
+            "https://github.com/pythops/bluetui/releases/latest/download/bluetui-$arch-linux-musl"
+        install_release_bin wlctl \
+            "https://github.com/aashish-thapa/wlctl/releases/latest/download/wlctl-$arch-unknown-linux-musl"
+    fi
+}
+
+install_wiremix() {
+    # No release binary and no Debian package. Needs Rust >= 1.88; Debian 13 has 1.85,
+    # so use rustup when the system cargo is older.
+    command -v wiremix >/dev/null 2>&1 && return 0
+    export PATH="$HOME/.cargo/bin:$PATH"
+    need="1.88"
+    have=$(cargo --version 2>/dev/null | sed -n 's/^cargo \([0-9]*\.[0-9]*\).*/\1/p')
+    if [ -z "$have" ] || [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
+        say "Installing a newer Rust toolchain with rustup..."
+        if retry curl -fsSL https://sh.rustup.rs -o "$tmp/rustup.sh"; then
+            sh "$tmp/rustup.sh" -y --profile minimal --no-modify-path ||
+                { warn "Could not install rustup; wiremix (Mod+Shift+A) not installed."; return 0; }
+        else
+            warn "Could not download rustup; wiremix (Mod+Shift+A) not installed."
+            return 0
+        fi
+    fi
+    say "Installing wiremix via cargo..."
+    cargo install --locked wiremix || warn "Could not install wiremix (Mod+Shift+A)."
 }
 
 install_rtk() {
@@ -316,11 +366,16 @@ enable_ssh_agent
 install_killswitch
 install_yazi
 install_neovim_plugins
-install_cargo_tools
+install_tui_tools
+install_wiremix
 install_rtk
 
 if command -v zsh >/dev/null 2>&1; then
     zsh -n "$HOME/.zshrc" || warn "~/.zshrc contains a syntax error."
+fi
+
+if [ -n "$warnings" ]; then
+    printf '\nThese steps FAILED or were skipped:%s\n\n' "$warnings" >&2
 fi
 
 if [ "$backed_up" -eq 1 ]; then

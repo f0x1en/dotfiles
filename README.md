@@ -198,7 +198,9 @@ backed up under `~/.dotfiles-backup-TIMESTAMP` before checkout.
 7. Installs JetBrainsMono Nerd Font into `~/.local/share/fonts`.
 8. Creates `~/.config/aria2/aria2.conf` with a random RPC secret.
 9. Installs Neovim plugins with `lazy.nvim`.
-10. Installs `wiremix`, `bluetui`, and `wlctl` with Cargo when Cargo is available.
+10. Installs `bluetui` and `wlctl` from GitHub release binaries, and `wiremix`
+    with Cargo (rustup when the system Rust is older than 1.88). Failed steps
+    are listed again at the end of the run.
 11. Enables the user `ssh-agent.socket`. Copy your SSH key to `~/.ssh` yourself;
     Sway asks for its passphrase at login (`ssh-add` with zenity).
 12. Installs the Claude killswitch from `packages/claude-killswitch.*` into

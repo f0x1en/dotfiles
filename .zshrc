@@ -18,7 +18,11 @@ path=(
 # ── Oh My Zsh ────────────────────────────────────────────────
 ZSH_THEME="robbyrussell"
 plugins=(git)
-source "$ZSH/oh-my-zsh.sh"
+if [[ -r "$ZSH/oh-my-zsh.sh" ]]; then
+    source "$ZSH/oh-my-zsh.sh"
+else
+    print -u2 "oh-my-zsh missing: git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh"
+fi
 
 # ── Vi mode ──────────────────────────────────────────────────
 bindkey -v
