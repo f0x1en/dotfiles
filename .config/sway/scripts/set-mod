@@ -1,7 +1,7 @@
 #!/bin/sh
 # Press your Mod key; saves it to ~/.config/sway/mod (per machine, not tracked) and reloads Sway.
 echo "Press the key you want as Mod (Super, Alt or AltGr)."
-mod=$(stdbuf -oL wev -f wl_keyboard:key 2>/dev/null | awk '
+mod=$(wev -f wl_keyboard:key 2>/dev/null | awk '
   /sym: (Super_[LR]|Hyper_[LR])/ { print "Mod4"; exit }
   /sym: Alt_[LR]/ { print "Mod1"; exit }
   /sym: (ISO_Level3_Shift|Mode_switch)/ { print "Mod5"; exit }')
