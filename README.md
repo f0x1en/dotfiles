@@ -83,7 +83,7 @@ GTK uses Adwaita-dark recolored by `.config/gtk-3.0/gtk.css` and
 
 ## Sway shortcuts
 
-`Mod` = Super / Windows key.
+`Mod` = Super / Windows key by default. If your keyboard ignores it, run `.config/sway/scripts/set-mod` (it also runs by itself at first Sway start) and press the key you want; it is saved in `~/.config/sway/mod` (not tracked).
 
 | Shortcut | Action |
 |---|---|

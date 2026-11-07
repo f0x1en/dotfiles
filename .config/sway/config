@@ -1,6 +1,9 @@
 ### Variables
 
 set $mod Mod4
+# Per-machine Mod key, written by scripts/set-mod. Asks at first start if missing.
+include ~/.config/sway/mod
+exec [ -e ~/.config/sway/mod ] || kitty --title set-mod ~/.config/sway/scripts/set-mod
 set $term kitty
 set $menu fuzzel
 set $browser firefox-esr

@@ -251,3 +251,6 @@ lan-arp.txt
 *.swp
 *.swo
 *~
+
+# Per-machine Mod key
+.config/sway/mod

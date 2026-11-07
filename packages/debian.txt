@@ -66,6 +66,7 @@ mousepad
 
 # Wayland utilities
 wl-clipboard
+wev
 cliphist
 grim
 slurp
