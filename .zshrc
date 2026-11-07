@@ -3,6 +3,7 @@
 # ── Environment ──────────────────────────────────────────────
 export ZSH="$HOME/.oh-my-zsh"
 export EDITOR=nvim
+export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent"
 export VISUAL=nvim
 
 typeset -U path PATH

@@ -47,6 +47,8 @@ exec mako
 exec_always ~/.config/sway/scripts/wob-start
 # Auth prompts (polkit agent) and USB automount: Plasma used to do both
 exec lxpolkit
+# Load the SSH key into the systemd agent once per login (passphrase via zenity)
+exec sh -c 'SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent" SSH_ASKPASS="$HOME/.config/sway/scripts/ssh-askpass" SSH_ASKPASS_REQUIRE=force ssh-add'
 exec udiskie --no-tray
 # kdeconnect phone
 exec /usr/bin/kdeconnectd

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Used by ssh-add at login: ask for the key passphrase once per boot.
+exec zenity --password --title="SSH key passphrase"
