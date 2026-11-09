@@ -169,6 +169,23 @@ class App:
         if cur is not None:
             self.m.cmd("playlist-next")
 
+    def delete_current(self):
+        """Ask, then move the playing track to the trash and play the next one."""
+        pl, cur = self.current()
+        if cur is None:
+            return
+        path = pl[cur]["filename"]
+        h, _ = self.scr.getmaxyx()
+        self.put(h - 3, 2, f"delete {os.path.basename(path)}? y/n".ljust(self.W), curses.A_BOLD)
+        self.scr.timeout(-1)
+        ok = self.scr.getch() == ord("y")
+        self.scr.timeout(250)
+        if ok and subprocess.run(["gio", "trash", path], stderr=subprocess.DEVNULL).returncode == 0:
+            self.repeat_off()
+            self.m.cmd("playlist-remove", "current")
+            if path in self.files:
+                self.files.remove(path)
+
     def adjust(self, name, delta, lo, hi):
         setattr(self, name, max(lo, min(hi, getattr(self, name) + delta)))
         self.apply_audio()
@@ -236,7 +253,7 @@ class App:
         # controls
         self.put(H - 4, 2, f"vol {self.vol}   bass {self.bass:+d}   treb {self.treble:+d}", curses.A_BOLD)
         self.put(H - 3, 2, "space pause  h/l seek  </> skip  j/k move  enter play  / search  o folder", curses.A_DIM)
-        self.put(H - 2, 2, "[/] vol  b/B bass  t/T treb  f flat  r repeat  s shuffle  q quit", curses.A_DIM)
+        self.put(H - 2, 2, "[/] vol  b/B bass  t/T treb  f flat  r repeat  s shuffle  d delete  q quit", curses.A_DIM)
         scr.refresh()
 
     def move(self, step):
@@ -401,6 +418,8 @@ class App:
                 self.pick()
             elif k == ord("/"):
                 self.search()
+            elif k == ord("d"):
+                self.delete_current()
 
 
 CONTROL = {  # `music pause|next|prev` drives the running player (used by sway keys)
