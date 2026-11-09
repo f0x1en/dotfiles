@@ -1,0 +1,55 @@
+#!/bin/sh
+# mdpdf: Markdown (Persian/English) -> PDF via pandoc + headless chromium.
+# The browser handles RTL/LTR mixing, so no LaTeX is needed.
+set -eu
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: mdpdf input.md [output.pdf]" >&2
+    exit 2
+fi
+
+in=$1
+out=$(realpath -m "${2:-${in%.*}.pdf}")
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+cat > "$tmp/style.html" <<'EOF'
+<style>
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+  @bottom-center { content: counter(page); font: 9pt "Inter", sans-serif; color: #666; }
+}
+body {
+  font-family: "Inter", "Vazirmatn", sans-serif;  /* Latin from Inter, Persian from Vazirmatn */
+  font-size: 11pt; line-height: 1.8; color: #111; background: #fff;
+  max-width: none; margin: 0; padding: 0;
+}
+p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, dt, dd { text-align: start; }
+pre, code, kbd { font-family: "JetBrains Mono", monospace; font-size: 0.9em; }
+pre { direction: ltr; text-align: left; background: #f4f4f4; padding: 8px 10px;
+      border-radius: 4px; white-space: pre-wrap; break-inside: avoid; }
+code { unicode-bidi: isolate; direction: ltr; }
+table { display: table; border-collapse: collapse; width: 100%; margin: 8px 0; }
+th, td { border: 1px solid #999; padding: 4px 7px; vertical-align: top; }
+th { background: #eee; }
+tr, img, figure { break-inside: avoid; }
+h1, h2, h3, h4 { break-after: avoid; }
+img { max-width: 100%; }
+blockquote { border-inline-start: 3px solid #999; margin-inline: 0; padding-inline-start: 10px; color: #444; }
+math { direction: ltr; }
+</style>
+EOF
+
+# Persian/Arabic digits -> Western digits, then Markdown -> HTML,
+# then give each block dir="auto" so it picks its own direction.
+sed 'y/۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩/01234567890123456789/' "$in" |
+    pandoc -f markdown -s --embed-resources --math-method=mathml \
+        --resource-path="$(dirname "$in")" \
+        -M pagetitle="$(basename "${in%.*}")" -V lang=fa -V dir=rtl \
+        -H "$tmp/style.html" |
+    sed -E 's/<(p|li|h[1-6]|td|th|blockquote|dt|dd)([ >])/<\1 dir="auto"\2/g' \
+        > "$tmp/out.html"
+
+chromium --headless --disable-gpu --no-pdf-header-footer \
+    --print-to-pdf="$out" "file://$tmp/out.html" 2>/dev/null

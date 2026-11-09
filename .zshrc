@@ -158,47 +158,6 @@ omniroute-on() {
     BG_LOG="$HOME/.local/state/omniroute.log" bg omniroute
 }
 
-# Convert md to pdf with pandoc
-mdpdf() {
-    if (( $# < 1 || $# > 2 )); then
-        print -u2 "Usage: mdpdf input.md [output.pdf]"
-        return 2
-    fi
-
-    local input="$1"
-    local output="${2:-${1:r}.pdf}"
-    local html
-    html=$(mktemp --suffix=.html) || return
-    {
-        # HTML lets chromium handle RTL/LTR mixing; no LaTeX needed.
-        pandoc "$input" -s --embed-resources --math-method=mathml \
-            --resource-path="${input:h}" \
-            -M pagetitle="${input:t:r}" -V lang=fa -V dir=rtl \
-            -c "$HOME/.config/pandoc/mdpdf.css" \
-            --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
-            -o "$html" &&
-        chromium --headless --disable-gpu --no-pdf-header-footer \
-            --print-to-pdf="${output:a}" "file://$html" 2>/dev/null
-    } always {
-        rm -f "$html"
-    }
-}
-# mdpdf() {
-#     if (( $# < 1 || $# > 2 )); then
-#         print -u2 "Usage: mdpdf input.md [output.pdf]"
-#         return 2
-#     fi
-#
-#     local input="$1"
-#     local output="${2:-${1:r}.pdf}"
-#
-#     pandoc "$input" \
-#         --pdf-engine=xelatex \
-#         -H "$HOME/.config/pandoc/persian-header.tex" \
-#         --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
-#         -o "$output"
-# }
-
 # Tools routed through the local proxy
 # reels() {
 #     local p=socks5h://127.0.0.1:10808
