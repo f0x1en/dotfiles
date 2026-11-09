@@ -1,0 +1,49 @@
+/* Stylesheet for mdpdf (pandoc -> HTML -> chromium). */
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+  @bottom-center { content: counter(page); font: 9pt "Inter", sans-serif; color: #666; }
+}
+
+html { direction: rtl; }
+body {
+  /* Latin glyphs from Inter, Persian falls back to Vazirmatn. */
+  font-family: "Inter", "Vazirmatn", sans-serif;
+  font-size: 11pt;
+  line-height: 1.8;
+  color: #111;
+  background: #fff;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Each block takes its direction from its first strong character. */
+p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, dt, dd, figcaption {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+pre, code, kbd {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.9em;
+}
+pre {
+  direction: ltr;
+  text-align: left;
+  background: #f4f4f4;
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  break-inside: avoid;
+}
+code { unicode-bidi: isolate; direction: ltr; }
+
+table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+th, td { border: 1px solid #999; padding: 4px 7px; vertical-align: top; }
+th { background: #eee; }
+tr, img, figure { break-inside: avoid; }
+h1, h2, h3, h4 { break-after: avoid; }
+img { max-width: 100%; }
+blockquote { border-inline-start: 3px solid #999; margin-inline: 0; padding-inline-start: 10px; color: #444; }
+math { direction: ltr; }

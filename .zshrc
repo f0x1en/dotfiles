@@ -167,14 +167,21 @@ mdpdf() {
 
     local input="$1"
     local output="${2:-${1:r}.pdf}"
-
-    pandoc "$input" \
-        --pdf-engine=xelatex \
-        -V lang=en-US \
-        --syntax-highlighting=idiomatic \
-        -H "$HOME/.config/pandoc/persian-header.tex" \
-        --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
-        -o "$output"
+    local html
+    html=$(mktemp --suffix=.html) || return
+    {
+        # HTML lets chromium handle RTL/LTR mixing; no LaTeX needed.
+        pandoc "$input" -s --embed-resources --math-method=mathml \
+            --resource-path="${input:h}" \
+            -M pagetitle="${input:t:r}" -V lang=fa -V dir=rtl \
+            -c "$HOME/.config/pandoc/mdpdf.css" \
+            --lua-filter="$HOME/.config/pandoc/filters/english-digits.lua" \
+            -o "$html" &&
+        chromium --headless --disable-gpu --no-pdf-header-footer \
+            --print-to-pdf="${output:a}" "file://$html" 2>/dev/null
+    } always {
+        rm -f "$html"
+    }
 }
 # mdpdf() {
 #     if (( $# < 1 || $# > 2 )); then
