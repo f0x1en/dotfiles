@@ -12,5 +12,7 @@ return {
     -- render-markdown draws the UI; avoid double rendering
     ui = { enable = false },
     legacy_commands = false,
+    -- do not add id/aliases/tags to notes on save
+    frontmatter = { enabled = false },
   },
 }
