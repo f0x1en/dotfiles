@@ -8,12 +8,20 @@ return {
     explorer = { replace_netrw = true },
   },
   keys = {
-    { "<leader>e", function() Snacks.explorer() end, desc = "File tree" },
-    -- jump into the tree if open, open it if not
-    { "<leader>o", function()
+    -- closed: open it; open: jump into it; already in it: close it
+    { "<leader>e", function()
       local p = Snacks.picker.get({ source = "explorer" })[1]
-      if p then p:focus() else Snacks.explorer() end
-    end, desc = "Focus file tree" },
+      if not p then
+        Snacks.explorer()
+      elseif p:is_focused() then
+        p:close()
+      else
+        p:focus()
+      end
+    end, desc = "File tree" },
     { "<leader>b", function() Snacks.picker.buffers() end, desc = "Open files" },
+    { "H", "<cmd>bprevious<CR>", desc = "Previous tab" },
+    { "L", "<cmd>bnext<CR>", desc = "Next tab" },
+    { "<leader>x", function() Snacks.bufdelete() end, desc = "Close tab" },
   },
 }
