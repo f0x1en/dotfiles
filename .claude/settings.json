@@ -84,7 +84,7 @@
       "Read(~/.zshrc.local)"
     ]
   },
-  "model": "sonnet",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -156,6 +156,11 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add -A*)",
+      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add .*)"
+    ],
     "environment": [
       "### Org-wide",
       "**Organization**: None configured",
@@ -182,11 +187,6 @@
       "**Trusted repo**: the bare git repo at ~/.cfg with $HOME as work tree (this project, /home/user) — no remote configured",
       "**Org-specific CLIs**: None configured — personal tool wrappers in routine use: rtk, swaymsg, kitty, omniroute, fuzzel, makoctl, mpv, pactl, wob, zoxide, config (bare-repo git alias)",
       "routine under ~/.cfg (bare repo) prefix: config/git operations against $HOME work tree are expected and routine for this user"
-    ],
-    "soft_deny": [
-      "$defaults",
-      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add -A*)",
-      "Bash(git --git-dir=$HOME/.cfg --work-tree=$HOME add .*)"
     ]
   }
 }
