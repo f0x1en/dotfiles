@@ -41,3 +41,4 @@
   Many ignored files sit in `$HOME`: never add directories wholesale.
 - Claude may run `sudo` when a task needs it (user OK, 2026-11-07). Never store or print the password; pass it over stdin. Still confirm `apt` changes.
 - Colors follow one neutral palette (README "Palette"). Do not add new accent colors.
+- All Claude Code traffic (API and every tool subprocess) goes through the mixed proxy `127.0.0.1:10808`, set in `~/.claude/settings.json` `env`. Keep it that way. Do not bypass it unless the user asks. apt uses it via `/etc/apt/apt.conf.d/95proxy`. Details: `~/.config/CLAUDE.md`.
