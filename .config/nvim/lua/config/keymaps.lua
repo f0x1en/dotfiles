@@ -97,3 +97,8 @@ vim.keymap.set("x", "gx", function()
   local text = table.concat(vim.fn.getregion(vim.fn.getpos("v"), vim.fn.getpos(".")), "")
   vim.ui.open(text)
 end, { desc = "Open selection" })
+
+-- No side-by-side panes: split keys do nothing
+for _, k in ipairs({ "<C-w>v", "<C-w><C-v>", "<C-w>s", "<C-w><C-s>", "<C-w>n", "<C-w><C-n>" }) do
+  vim.keymap.set("n", k, "<Nop>")
+end
