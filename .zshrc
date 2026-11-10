@@ -194,6 +194,10 @@ alias phone='scrcpy $SCRCPY_OPTS'
 alias phone-off='pkill -f "scrcpy -Sw"'
 alias omniroute-off='pkill -f omniroute'
 
+# apt proxy toggle (/etc/apt/apt.conf.d/95proxy)
+alias apt-proxy-on='sudo mv /etc/apt/apt.conf.d/95proxy.off /etc/apt/apt.conf.d/95proxy'
+alias apt-proxy-off='sudo mv /etc/apt/apt.conf.d/95proxy /etc/apt/apt.conf.d/95proxy.off'
+
 # bare git dotfiles: .zshrc .tmux.conf .config/nvim .config/kitty
 alias config='git --git-dir="$HOME/.cfg" --work-tree="$HOME"'
 
