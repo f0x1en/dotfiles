@@ -8,17 +8,10 @@ return {
     explorer = { replace_netrw = true },
   },
   keys = {
-    -- closed: open it; open: jump into it; already in it: close it
-    { "<leader>e", function()
-      local p = Snacks.picker.get({ source = "explorer" })[1]
-      if not p then
-        Snacks.explorer()
-      elseif p:is_focused() then
-        p:close()
-      else
-        p:focus()
-      end
-    end, desc = "File tree" },
+    -- open (focused) or close, from anywhere
+    { "<leader>e", function() Snacks.explorer() end, desc = "File tree" },
+    { "<C-h>", "<C-w>h", desc = "Go to left window (tree)" },
+    { "<C-l>", "<C-w>l", desc = "Go to right window (document)" },
     { "<leader>b", function() Snacks.picker.buffers() end, desc = "Open files" },
     { "H", "<cmd>bprevious<CR>", desc = "Previous tab" },
     { "L", "<cmd>bnext<CR>", desc = "Next tab" },
