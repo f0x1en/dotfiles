@@ -89,6 +89,15 @@ local groups = {
     -- Status line and splits
     StatusLine = { fg = c.fg, bg = "#242424" },
     StatusLineNC = { fg = "#707070", bg = "#171717" },
+
+    -- Tab bar (mini.tabline): active tab bright and bold, others dim
+    MiniTablineCurrent = { fg = "#D4D4D4", bg = "#333333", bold = true },
+    MiniTablineVisible = { fg = "#6B6B6B", bg = "#161616" },
+    MiniTablineHidden = { fg = "#6B6B6B", bg = "#161616" },
+    MiniTablineModifiedCurrent = { fg = "#D4D4D4", bg = "#333333", bold = true },
+    MiniTablineModifiedVisible = { fg = "#6B6B6B", bg = "#161616" },
+    MiniTablineModifiedHidden = { fg = "#6B6B6B", bg = "#161616" },
+    MiniTablineFill = { bg = "#161616" },
     WinSeparator = { fg = c.border },
     VertSplit = { fg = c.border },
 
