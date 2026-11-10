@@ -25,7 +25,8 @@ pdf = [
 ]
 
 play = [
-    { run = 'mpv %s', orphan = true, desc = "Play media" }
+    # --force-window: songs get a window too, instead of playing hidden
+    { run = 'mpv --force-window %s', orphan = true, desc = "Play media" }
 ]
 
 [open]
