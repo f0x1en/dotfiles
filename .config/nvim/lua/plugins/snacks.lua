@@ -34,8 +34,15 @@ return {
     })
   end,
   keys = {
-    -- open (focused) or close, from anywhere
-    { "<leader>e", function() Snacks.explorer() end, desc = "File tree" },
+    -- closed: open it; open but not focused: focus it; focused: close it
+    { "<leader>e", function()
+      local tree = Snacks.picker.get({ source = "explorer" })[1]
+      if tree and not tree:is_focused() then
+        tree:focus()
+      else
+        Snacks.explorer()
+      end
+    end, desc = "File tree" },
     { "<C-h>", "<C-w>h", desc = "Go to left window (tree)" },
     { "<C-l>", "<C-w>l", desc = "Go to right window (document)" },
     { "<leader>b", function() Snacks.picker.buffers() end, desc = "Open files" },
