@@ -115,6 +115,12 @@ list-dir() {
 }
 zle -N list-dir
 bindkey -M vicmd L list-dir
+# H in normal mode: go to the parent directory
+parent-dir() {
+    cd .. && zle reset-prompt
+}
+zle -N parent-dir
+bindkey -M vicmd H parent-dir
 # Copy command output to clipboard
 c() {
     "$@" 2>&1 | tee >(wl-copy)
