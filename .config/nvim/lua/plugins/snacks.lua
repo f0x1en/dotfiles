@@ -26,7 +26,14 @@ return {
     picker = {
       sources = {
         explorer = {
-          actions = { sibling_next = sibling(1), sibling_prev = sibling(-1) },
+          actions = {
+            sibling_next = sibling(1),
+            sibling_prev = sibling(-1),
+            -- l opens folders only; Enter still opens files
+            open_dir = function(picker, item)
+              if item and item.dir then picker:action("confirm") end
+            end,
+          },
           -- no side-by-side panes: tree Ctrl+v / Ctrl+s do nothing
           win = {
             -- false would fall back to vim's own Ctrl+v (visual block), so map to a no-op
@@ -35,6 +42,7 @@ return {
               ["<c-s>"] = function() end,
               ["}"] = "sibling_next",
               ["{"] = "sibling_prev",
+              ["l"] = "open_dir",
             } },
             input = { keys = {
               ["<c-v>"] = { function() end, mode = { "i", "n" } },
