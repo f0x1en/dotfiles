@@ -1,3 +1,20 @@
+-- tree } / {: jump to the next / previous item at the same level,
+-- skipping the contents of open subfolders
+local function sibling(step)
+  return function(picker)
+    local cur = picker:current()
+    if not cur then return end
+    local i = picker.list.cursor + step
+    while i >= 1 and i <= picker.list:count() do
+      local item = picker.list:get(i)
+      if item.parent == cur.parent then
+        return picker.list:move(i, true)
+      end
+      i = i + step
+    end
+  end
+end
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -9,10 +26,16 @@ return {
     picker = {
       sources = {
         explorer = {
+          actions = { sibling_next = sibling(1), sibling_prev = sibling(-1) },
           -- no side-by-side panes: tree Ctrl+v / Ctrl+s do nothing
           win = {
             -- false would fall back to vim's own Ctrl+v (visual block), so map to a no-op
-            list = { keys = { ["<c-v>"] = function() end, ["<c-s>"] = function() end } },
+            list = { keys = {
+              ["<c-v>"] = function() end,
+              ["<c-s>"] = function() end,
+              ["}"] = "sibling_next",
+              ["{"] = "sibling_prev",
+            } },
             input = { keys = {
               ["<c-v>"] = { function() end, mode = { "i", "n" } },
               ["<c-s>"] = { function() end, mode = { "i", "n" } },
