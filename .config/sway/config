@@ -155,10 +155,10 @@ bindsym $mod+Shift+7 move container to workspace number 7
 bindsym $mod+Shift+8 move container to workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9
 # Resize windows directly
-bindsym $mod+Ctrl+h resize grow width 10 px
-bindsym $mod+Ctrl+j resize shrink height 10 px
-bindsym $mod+Ctrl+k resize grow height 10 px
-bindsym $mod+Ctrl+l resize shrink width 10 px
+bindsym $mod+Ctrl+h resize grow width 75 px
+bindsym $mod+Ctrl+j resize shrink height 75 px
+bindsym $mod+Ctrl+k resize grow height 75 px
+bindsym $mod+Ctrl+l resize shrink width 75 px
 
 ### Layout
 
