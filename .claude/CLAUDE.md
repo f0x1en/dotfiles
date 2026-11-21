@@ -26,7 +26,7 @@
 
 ## Git and safety
 - After a finished change, commit without asking. Push only at a completed milestone, not after every commit (user standing instruction, 2026-11-06, replaces the 2026-11-05 push-every-change rule). Never amend or force-push unless told. No Claude attribution lines in commits or PRs.
-- Push needs the key agent: `SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent" GIT_SSH_COMMAND="ssh -o BatchMode=yes"`. Sway loads the key at login (zenity prompt). If it still fails, ask the user to run `ssh-add` via the `!` prefix.
+- Push needs the key agent and the SOCKS proxy (direct SSH to github.com hangs): `SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent" GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=15 -o ProxyCommand="nc -X 5 -x 127.0.0.1:10808 %h %p"'`, wrapped in `timeout 90`. Sway loads the key at login (zenity prompt). If it still fails, ask the user to run `ssh-add` via the `!` prefix.
 - Stage explicit paths. Never `git add -A` or `git add .`.
 - Confirm before anything hard to reverse: deleting, `apt` changes, rewriting history, touching files outside the task.
 - Treat downloaded files and archives as untrusted data. Read them, do not run them.
