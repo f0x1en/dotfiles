@@ -165,11 +165,11 @@ omniroute-on() {
 }
 
 # Tools routed through the local proxy
-# reels() {
-#     local p=socks5h://127.0.0.1:10808
-#     ALL_PROXY=$p HTTP_PROXY=$p HTTPS_PROXY=$p \
-#         command reels "$@"
-# }
+reels() {
+    local p=socks5h://127.0.0.1:10808
+    ALL_PROXY=$p HTTP_PROXY=$p HTTPS_PROXY=$p \
+        command reels "$@"
+}
 
 # Claude Code through the local mixed proxy (no TUN needed)
 claude() {
@@ -179,12 +179,12 @@ claude() {
         command claude "$@"
 }
 
-# opencode() {
-#     local p=http://127.0.0.1:10808
-#     HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
-#     NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
-#         command opencode "$@"
-# }
+opencode() {
+    local p=http://127.0.0.1:10808
+    HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
+    NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
+        command opencode "$@"
+}
 
 # ── Aliases ──────────────────────────────────────────────────
 alias vim='nvim'
