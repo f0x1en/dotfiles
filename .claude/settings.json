@@ -168,7 +168,7 @@
     "context7@claude-plugins-official": false,
     "cc-plugin-agents-md@builtin": true,
     "cc-plugin-diff@builtin": true,
-    "superpowers@anthropic-plugin-directory": true,
+    "superpowers@anthropic-plugin-directory": false,
     "code-review-anthropics@anthropic-plugin-directory": true,
     "skill-creator@anthropic-plugin-directory": true,
     "code-simplifier@anthropic-plugin-directory": true,
