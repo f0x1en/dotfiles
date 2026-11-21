@@ -1,0 +1,10 @@
+[Unit]
+Description=Pause mpd when audio output leaves headphones/bluetooth (music watch)
+After=mpd.service pipewire-pulse.service
+
+[Service]
+ExecStart=%h/.local/bin/music watch
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

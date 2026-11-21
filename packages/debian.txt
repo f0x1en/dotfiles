@@ -60,6 +60,9 @@ poppler-utils
 zathura
 zathura-pdf-poppler
 mpv
+mpd
+mpc
+mpdris2
 imv
 playerctl
 mousepad

@@ -1,82 +1,17 @@
 #!/usr/bin/env python3
-"""music: small mpv music player. Run `music` or `music <folder>`. Keys are shown on screen."""
-import curses, glob, json, os, random, re, signal, socket, subprocess, sys, threading, time
+"""music: extras for mpd (player UI is rmpc on mod+m).
 
-ROOT = os.environ.get("MUSIC_DIR", os.path.expanduser("~/Music"))
-RUN = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
-SOCK = f"{RUN}/music-{os.getpid()}.sock"
-LIST = f"{RUN}/music-{os.getpid()}.m3u"
-STATE = os.path.expanduser("~/.local/state/music.json")
-EXT = {".mp3", ".flac", ".ogg", ".opus", ".m4a", ".wav", ".aac", ".wma"}
-GAIN = 20  # bass/treble range is -GAIN..+GAIN dB
+music shuffle [folder]  queue the library (or a folder) with each folder spread over the queue
+music delete            move the playing track to the trash (asks first), play the next one
+music watch             pause when the output switches away from headphones/bluetooth/HDMI/USB
+"""
+import os, random, re, subprocess, sys
 
-
-class Mpv:
-    def __init__(self):
-        self.proc = subprocess.Popen(
-            ["mpv", "--idle=yes", "--no-video", "--no-terminal", f"--input-ipc-server={SOCK}",
-             "--af=@bass:lavfi=[bass=g=0],@treble:lavfi=[treble=g=0]"],
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.s = socket.socket(socket.AF_UNIX)
-        for _ in range(50):
-            try:
-                self.s.connect(SOCK)
-                break
-            except OSError:
-                time.sleep(0.1)
-        else:
-            raise SystemExit("could not connect to mpv")
-        self.s.settimeout(2)
-        self.buf, self.n = b"", 0
-
-    def cmd(self, *args):
-        self.n += 1
-        rid = self.n
-        try:
-            self.s.sendall(json.dumps({"command": list(args), "request_id": rid}).encode() + b"\n")
-            while True:
-                while b"\n" in self.buf:
-                    line, self.buf = self.buf.split(b"\n", 1)
-                    m = json.loads(line)
-                    if m.get("request_id") == rid:
-                        return m.get("data") if m.get("error") == "success" else None
-                self.buf += self.s.recv(65536)
-        except (OSError, ValueError):
-            return None
-
-    def get(self, prop):
-        return self.cmd("get_property", prop)
-
-    def close(self):
-        self.proc.terminate()
-        for p in (SOCK, LIST):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+ROOT = os.path.expanduser("~/Music")  # same as music_directory in ~/.config/mpd/mpd.conf
 
 
-def audio_folders():
-    """[(path, label, track count)] for every folder with audio at or below it."""
-    counts = {}
-    for d, dirs, files in os.walk(ROOT, followlinks=True):
-        dirs[:] = [x for x in dirs if not x.startswith(".")]
-        n = sum(os.path.splitext(f)[1].lower() in EXT for f in files)
-        while n and True:
-            counts[d] = counts.get(d, 0) + n
-            if d == ROOT or not d.startswith(ROOT):
-                break
-            d = os.path.dirname(d)
-    out = [(d, "All music" if d == ROOT else os.path.relpath(d, ROOT), n) for d, n in counts.items()]
-    return sorted(out, key=lambda x: (x[0] != ROOT, x[1].lower()))
-
-
-def tracks(folder):
-    out = []
-    for d, dirs, files in os.walk(folder, followlinks=True):
-        dirs[:] = [x for x in dirs if not x.startswith(".")]
-        out += [os.path.join(d, f) for f in files if os.path.splitext(f)[1].lower() in EXT]
-    return sorted(out)
+def mpc(*args, stdin=None):
+    return subprocess.run(["mpc", "-q", *args], input=stdin, capture_output=True, text=True, check=True).stdout
 
 
 def smart_order(files):
@@ -91,364 +26,28 @@ def smart_order(files):
     return [f for _, f in sorted(keyed)]
 
 
-def mmss(t):
-    t = int(t or 0)
-    return f"{t // 60:02d}:{t % 60:02d}"
+def shuffle(folder=""):
+    files = mpc("listall", *([folder] if folder else [])).split("\n")
+    files = [f for f in files if f]
+    if not files:
+        raise SystemExit(f"no tracks in: {folder or ROOT}")
+    mpc("random", "off")
+    mpc("clear")
+    mpc("add", stdin="\n".join(smart_order(files)) + "\n")
+    mpc("play")
 
 
-def bar(frac, width, ch="█", empty="─"):
-    n = max(0, min(width, round(frac * width)))
-    return ch * n + empty * (width - n)
-
-
-class App:
-    def __init__(self, scr, mpv):
-        self.scr, self.m = scr, mpv
-        self.vol, self.bass, self.treble, self.shuffle = 80, 0, 0, True
-        try:
-            self.__dict__.update(json.load(open(STATE)))
-        except (OSError, ValueError):
-            pass
-        self.folder, self.files = None, []
-        self.qpath, self.qi, self.follow, self.last_cur = None, 0, True, None  # queue cursor
-        self.apply_audio()
-
-    def save(self):
-        os.makedirs(os.path.dirname(STATE), exist_ok=True)
-        json.dump({k: getattr(self, k) for k in ("vol", "bass", "treble", "shuffle")}, open(STATE, "w"))
-
-    def apply_audio(self):
-        self.m.cmd("set_property", "volume", self.vol)
-        for name in ("bass", "treble"):
-            self.m.cmd("af-command", name, "gain", str(getattr(self, name)), name)
-
-    def load(self, folder):
-        self.files = tracks(folder)
-        if self.files:
-            self.folder = folder
-            self.requeue()
-
-    def reorder(self):
-        """Re-order only the upcoming tracks; the playing track and the history stay."""
-        pl, cur = self.current()
-        up = [e["filename"] for e in pl[cur + 1:]] if cur is not None else []
-        if not up:
-            return
-        for i in range(len(pl) - 1, cur, -1):
-            self.m.cmd("playlist-remove", i)
-        new = smart_order(up) if self.shuffle else sorted(up)
-        open(LIST, "w").write("\n".join(new) + "\n")
-        self.m.cmd("loadlist", LIST, "append")
-
-    def requeue(self):
-        order = smart_order(self.files) if self.shuffle else list(self.files)
-        self.m.cmd("loadfile", order[0], "replace")
-        if len(order) > 1:
-            open(LIST, "w").write("\n".join(order[1:]) + "\n")
-            self.m.cmd("loadlist", LIST, "append")
-        self.m.cmd("set_property", "pause", False)
-
-    def current(self):
-        pl = self.m.get("playlist") or []
-        return pl, next((i for i, e in enumerate(pl) if e.get("current")), None)
-
-    def repeat_off(self):
-        """Skipping to another track ends repeat of the old one."""
-        self.m.cmd("set_property", "loop-file", "no")
-
-    def play_now(self, path):
-        pl, cur = self.current()
-        if cur is not None and pl[cur]["filename"] == path:
-            self.m.cmd("seek", 0, "absolute")
-            return
-        self.repeat_off()
-        for i in range(len(pl) - 1, -1, -1):
-            if pl[i]["filename"] == path:
-                self.m.cmd("playlist-remove", i)  # keep a single copy in the list
-        self.m.cmd("loadfile", path, "replace" if cur is None else "insert-next")
-        if cur is not None:
-            self.m.cmd("playlist-next")
-
-    def delete_current(self):
-        """Ask, then move the playing track to the trash and play the next one."""
-        pl, cur = self.current()
-        if cur is None:
-            return
-        path = pl[cur]["filename"]
-        h, _ = self.scr.getmaxyx()
-        self.put(h - 3, 2, f"delete {os.path.basename(path)}? y/n".ljust(self.W), curses.A_BOLD)
-        self.scr.timeout(-1)
-        ok = self.scr.getch() == ord("y")
-        self.scr.timeout(250)
-        if ok and subprocess.run(["gio", "trash", path], stderr=subprocess.DEVNULL).returncode == 0:
-            self.repeat_off()
-            self.m.cmd("playlist-remove", "current")
-            if path in self.files:
-                self.files.remove(path)
-
-    def adjust(self, name, delta, lo, hi):
-        setattr(self, name, max(lo, min(hi, getattr(self, name) + delta)))
-        self.apply_audio()
-        self.save()
-
-    # ---- drawing ----
-    def put(self, y, x, text, attr=0):
-        try:
-            self.scr.addnstr(y, x, text, max(0, self.W - x - 2), attr)
-        except curses.error:
-            pass
-
-    def draw(self):
-        scr = self.scr
-        scr.erase()
-        h, w = scr.getmaxyx()
-        if h < 12 or w < 40:
-            scr.addnstr(0, 0, "terminal too small", w - 1)
-            scr.refresh()
-            return
-        H = h
-        self.W = W = w
-        pl, cur = self.current()
-        title = self.m.get("media-title")
-        pos, dur = self.m.get("time-pos"), self.m.get("duration")
-        paused, loop = self.m.get("pause"), self.m.get("loop-file")
-        # box
-        scr.addstr(0, 0, "┌ Music " + "─" * (W - 9) + "┐")
-        for y in range(1, H - 1):
-            scr.addstr(y, 0, "│")
-            scr.addstr(y, W - 1, "│")
-        try:
-            scr.addstr(H - 1, 0, "└" + "─" * (W - 2) + "┘")
-        except curses.error:
-            pass  # writing the last cell of the screen always errors; the text is drawn
-        # now playing
-        if cur is None:
-            self.put(1, 2, "nothing playing - press o to pick a folder", curses.A_DIM)
-        else:
-            self.put(1, 2, ("❚❚ " if paused else "▶ ") + (title or ""), curses.A_BOLD)
-            self.put(2, 4, os.path.basename(self.folder or ""), curses.A_DIM)
-            self.put(3, 4, f"{mmss(pos)} {bar((pos or 0) / dur if dur else 0, max(1, W - 18), '━')} {mmss(dur)}")
-        # queue: the whole list; played tracks are dimmed
-        n = len(pl)
-        left = n - cur - 1 if cur is not None else 0
-        rep = "on" if loop not in (False, None, "no") else "off"
-        self.put(5, 2, f"Queue · {left} up next · {cur or 0} played", curses.A_DIM)
-        status = f"shuffle {'on' if self.shuffle else 'off'} · repeat {rep}"
-        self.put(5, W - 3 - len(status), status, curses.A_DIM)
-        if cur != self.last_cur:
-            self.last_cur, self.follow = cur, True  # cursor follows the playing track
-        names = [e["filename"] for e in pl]
-        self.qi = cur or 0 if self.follow or self.qpath not in names else names.index(self.qpath)
-        rows = H - 10
-        start = max(0, min(self.qi - rows // 2, n - rows))
-        for i in range(start, min(n, start + rows)):
-            name = os.path.splitext(os.path.basename(names[i]))[0]
-            attr = curses.A_DIM if cur is not None and i < cur else 0
-            if i == cur:
-                attr |= curses.A_BOLD
-            if i == self.qi:
-                attr |= curses.A_REVERSE
-            self.put(6 + i - start, 2, ">" if i == self.qi else " ")
-            self.put(6 + i - start, 4, ("▶ " if i == cur else "  ") + name, attr)
-        # controls
-        self.put(H - 4, 2, f"vol {self.vol}   bass {self.bass:+d}   treb {self.treble:+d}", curses.A_BOLD)
-        self.put(H - 3, 2, "space pause  h/l seek  </> skip  j/k move  enter play  / search  o folder", curses.A_DIM)
-        self.put(H - 2, 2, "[/] vol  b/B bass  t/T treb  f flat  r repeat  s shuffle  d delete  q quit", curses.A_DIM)
-        scr.refresh()
-
-    def move(self, step):
-        """Move the queue cursor by step rows (clamped)."""
-        pl, _ = self.current()
-        if pl:
-            self.qi = max(0, min(len(pl) - 1, self.qi + step))
-            self.qpath, self.follow = pl[self.qi]["filename"], False
-
-    def play_selected(self):
-        """Play the track under the cursor now, then carry on with the queue."""
-        pl, cur = self.current()
-        if not pl or self.qi == cur:
-            return
-        self.repeat_off()
-        if cur is None:
-            self.m.cmd("playlist-play-index", self.qi)
-            return
-        if self.qi != cur + 1:
-            self.m.cmd("playlist-move", self.qi, cur + 1)
-        self.m.cmd("playlist-next")
-
-    # ---- chooser (folder picker and search) ----
-    def choose(self, items, prompt):
-        """items: [(value, label)]. Type to filter, enter picks, esc cancels. Returns value or None."""
-        filt, sel, scr = "", 0, self.scr
-        scr.timeout(-1)
-        result = None
-        while True:
-            shown = [i for i in items if filt.lower() in i[1].lower()]
-            sel = max(0, min(sel, len(shown) - 1))
-            scr.erase()
-            h, w = scr.getmaxyx()
-            scr.addnstr(0, 0, f"{prompt}> {filt}", w - 1, curses.A_BOLD)
-            scr.addnstr(1, 0, "enter play   esc cancel   type to filter   up/down or ctrl-p/ctrl-n to move", w - 1, curses.A_DIM)
-            rows = h - 3
-            start = max(0, min(sel - rows // 2, len(shown) - rows))
-            for i, (_, label) in enumerate(shown[start:start + rows]):
-                attr = curses.A_REVERSE if start + i == sel else 0
-                scr.addnstr(3 + i, 0, f" {label}".ljust(w - 1), w - 1, attr)
-            k = scr.getch()
-            if k in (27, 3):
-                break
-            elif k in (10, curses.KEY_ENTER) and shown:
-                result = shown[sel][0]
-                break
-            elif k in (curses.KEY_UP, 16):
-                sel -= 1
-            elif k in (curses.KEY_DOWN, 14):
-                sel += 1
-            elif k in (curses.KEY_BACKSPACE, 127, 8):
-                filt, sel = filt[:-1], 0
-            elif 32 <= k < 127:
-                filt, sel = filt + chr(k), 0
-        scr.timeout(250)
-        return result
-
-    def menu(self, items, prompt):
-        """items: [(value, label)]. j/k move, enter picks, esc or q cancels. Returns value or None."""
-        sel, scr, result = 0, self.scr, None
-        scr.timeout(-1)
-        while items:
-            scr.erase()
-            h, w = scr.getmaxyx()
-            scr.addnstr(0, 0, prompt, w - 1, curses.A_BOLD)
-            scr.addnstr(1, 0, "j/k move   g/G top/bottom   enter play   esc cancel", w - 1, curses.A_DIM)
-            rows = max(1, h - 3)
-            start = max(0, min(sel - rows // 2, len(items) - rows))
-            for i in range(start, min(len(items), start + rows)):
-                scr.addnstr(3 + i - start, 0, f" {items[i][1]}".ljust(w - 1), w - 1, curses.A_REVERSE if i == sel else 0)
-            k = scr.getch()
-            if k in (27, ord("q"), 3):
-                break
-            elif k in (10, curses.KEY_ENTER):
-                result = items[sel][0]
-                break
-            elif k in (curses.KEY_DOWN, ord("j"), 14):
-                sel = min(sel + 1, len(items) - 1)
-            elif k in (curses.KEY_UP, ord("k"), 16):
-                sel = max(sel - 1, 0)
-            elif k == ord("g"):
-                sel = 0
-            elif k == ord("G"):
-                sel = len(items) - 1
-        scr.timeout(250)
-        return result
-
-    def pick(self):
-        folder = self.menu([(d, f"{label}  ({n})") for d, label, n in audio_folders()], "folder")
-        if folder:
-            self.load(folder)
-
-    def search(self):
-        if self.folder:
-            f = self.choose([(f, os.path.splitext(os.path.relpath(f, self.folder))[0]) for f in self.files], "search")
-            if f:
-                self.play_now(f)
-
-    def run(self, start):
-        curses.curs_set(0)
-        self.scr.keypad(True)
-        self.scr.timeout(250)
-        if start:
-            self.load(start)
-        else:
-            self.pick()
-        while True:
-            self.draw()
-            k = self.scr.getch()
-            if k in (ord("q"), 3):
-                return
-            elif k == ord(" "):
-                self.m.cmd("cycle", "pause")
-            elif k == ord(">"):
-                self.repeat_off()
-                self.m.cmd("playlist-next")
-            elif k == ord("<"):
-                self.repeat_off()
-                self.m.cmd("playlist-prev")
-            elif k in (curses.KEY_RIGHT, ord("l")):
-                self.m.cmd("seek", 5, "relative")
-            elif k in (curses.KEY_LEFT, ord("h")):
-                self.m.cmd("seek", -5, "relative")
-            elif k in (curses.KEY_DOWN, ord("j")):
-                self.move(1)
-            elif k in (curses.KEY_UP, ord("k")):
-                self.move(-1)
-            elif k == 4:  # ctrl-d
-                self.move(max(1, (self.scr.getmaxyx()[0] - 10) // 2))
-            elif k == 21:  # ctrl-u
-                self.move(-max(1, (self.scr.getmaxyx()[0] - 10) // 2))
-            elif k == ord("g"):
-                self.move(-10**9)
-            elif k == ord("G"):
-                self.move(10**9)
-            elif k in (10, curses.KEY_ENTER):
-                self.play_selected()
-            elif k == ord("]"):
-                self.adjust("vol", 5, 0, 100)
-            elif k == ord("["):
-                self.adjust("vol", -5, 0, 100)
-            elif k == ord("b"):
-                self.adjust("bass", 1, -GAIN, GAIN)
-            elif k == ord("B"):
-                self.adjust("bass", -1, -GAIN, GAIN)
-            elif k == ord("t"):
-                self.adjust("treble", 1, -GAIN, GAIN)
-            elif k == ord("T"):
-                self.adjust("treble", -1, -GAIN, GAIN)
-            elif k == ord("f"):
-                self.bass = self.treble = 0
-                self.apply_audio()
-                self.save()
-            elif k == ord("r"):
-                on = self.m.get("loop-file") not in (False, None, "no")
-                self.m.cmd("set_property", "loop-file", "no" if on else "inf")
-            elif k == ord("s"):
-                self.shuffle = not self.shuffle
-                self.save()
-                self.reorder()
-            elif k == ord("o"):
-                self.pick()
-            elif k == ord("/"):
-                self.search()
-            elif k == ord("d"):
-                self.delete_current()
-
-
-CONTROL = {  # `music pause|next|prev` drives the running player (used by sway keys)
-    "pause": [["cycle", "pause"]],
-    "next": [["set_property", "loop-file", "no"], ["playlist-next"]],
-    "prev": [["set_property", "loop-file", "no"], ["playlist-prev"]],
-}
-
-
-def control(action):
-    for path in sorted(glob.glob(f"{RUN}/music-*.sock"), key=os.path.getmtime, reverse=True):
-        s = socket.socket(socket.AF_UNIX)
-        try:
-            s.connect(path)
-        except OSError:
-            continue  # leftover socket of a dead player
-        s.settimeout(2)
-        for i, c in enumerate(CONTROL[action]):
-            s.sendall(json.dumps({"command": c, "request_id": i + 1}).encode() + b"\n")
-        replies, buf = 0, b""
-        try:
-            while replies < len(CONTROL[action]):  # wait for answers, or mpv drops the rest
-                buf += s.recv(65536)
-                replies = buf.count(b'"request_id"')
-        except OSError:
-            pass
-        s.close()
+def delete():
+    rel = mpc("-f", "%file%", "current").strip()
+    if not rel:
+        raise SystemExit("nothing is playing")
+    ask = subprocess.run(["fuzzel", "--dmenu", "--prompt", f"Trash {os.path.basename(rel)}? "],
+                         input="no\nyes\n", capture_output=True, text=True)
+    if ask.stdout.strip() != "yes":
         return
-    raise SystemExit("music is not running")
+    mpc("next")
+    subprocess.run(["gio", "trash", os.path.join(ROOT, rel)], check=True)
+    mpc("update")
 
 
 def output_state():
@@ -471,42 +70,30 @@ def external_output_lost(prev, now):
     return not internal
 
 
-def pause_on_output_loss():
+def watch():
     """Pause when the audio output switches away from an external device. Otherwise it moves to the speakers."""
     cur = output_state()
-    sub = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    sub = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True)
     for line in sub.stdout:
         if " on sink " not in line and " on card " not in line and " on server" not in line:
             continue
         now = output_state()
         if external_output_lost(cur, now):
-            s = socket.socket(socket.AF_UNIX)
-            try:
-                s.connect(SOCK)
-                s.sendall(b'{"command": ["set_property", "pause", true]}\n')
-            except OSError:
-                pass
-            s.close()
+            subprocess.run(["mpc", "-q", "pause"])
         cur = now or cur
+    raise SystemExit("pactl subscribe ended")
 
 
 def main():
-    if len(sys.argv) == 2 and sys.argv[1] in CONTROL:
-        return control(sys.argv[1])
-    start = None
-    if len(sys.argv) > 1:
-        start = os.path.realpath(sys.argv[1])
-        if not os.path.isdir(start):
-            raise SystemExit(f"not a folder: {sys.argv[1]}")
-    os.environ.setdefault("ESCDELAY", "25")
-    mpv = Mpv()
-    threading.Thread(target=pause_on_output_loss, daemon=True).start()
-    for sig in (signal.SIGHUP, signal.SIGTERM):
-        signal.signal(sig, lambda *_: sys.exit(0))
-    try:
-        curses.wrapper(lambda scr: App(scr, mpv).run(start))
-    finally:
-        mpv.close()
+    cmd, args = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("", [])
+    if cmd == "shuffle" and len(args) <= 1:
+        shuffle(*args)
+    elif cmd == "delete" and not args:
+        delete()
+    elif cmd == "watch" and not args:
+        watch()
+    else:
+        raise SystemExit(__doc__.strip())
 
 
 if __name__ == "__main__":

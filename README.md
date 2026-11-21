@@ -24,6 +24,7 @@ Sway, Zsh, Neovim, and Kitty.
 | Image viewer | imv |
 | Browser | Firefox ESR |
 | Media player | mpv |
+| Music | mpd + rmpc (Mod+M), mpc, mpDris2 |
 | Audio | PipeWire + WirePlumber + Wiremix |
 | Network | NetworkManager + wlctl |
 | Bluetooth | BlueZ + bluetui |

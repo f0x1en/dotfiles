@@ -92,11 +92,13 @@ bindsym $mod+Shift+n exec kitty --title wlctl wlctl
 bindsym $mod+Shift+b exec kitty --title bluetui bluetui
 # Audio
 bindsym $mod+Shift+a exec kitty --title wiremix wiremix --tab playback
-# Music: mod+m shows or hides the player (it keeps playing); mod+F7/F8/F9 prev, pause, next
+# Music (mpd): mod+m shows or hides rmpc; mod+F7/F8/F9 prev, play/pause, next; mod+F10 smart shuffle, mod+F11 trash track (~/.local/bin/music)
 bindsym $mod+m exec ~/.config/sway/scripts/music-toggle
-bindsym $mod+F7 exec ~/.local/bin/music prev
-bindsym $mod+F8 exec ~/.local/bin/music pause
-bindsym $mod+F9 exec ~/.local/bin/music next
+bindsym $mod+F7 exec mpc -q prev
+bindsym $mod+F8 exec mpc -q toggle
+bindsym $mod+F9 exec mpc -q next
+bindsym $mod+F10 exec ~/.local/bin/music shuffle
+bindsym $mod+F11 exec ~/.local/bin/music delete
 # Clipboard
 bindsym $mod+c exec cliphist list | fuzzel --dmenu --with-nth 2 | cliphist decode | wl-copy
 # Focus

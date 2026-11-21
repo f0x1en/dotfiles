@@ -278,6 +278,26 @@ install_tui_tools() {
             "https://github.com/pythops/bluetui/releases/latest/download/bluetui-$arch-linux-musl"
         install_release_bin wlctl \
             "https://github.com/aashish-thapa/wlctl/releases/latest/download/wlctl-$arch-unknown-linux-musl"
+        install_rmpc
+    fi
+}
+
+install_rmpc() {
+    # rmpc (mpd TUI on Mod+M): pinned release tarball, checked against its sha256.
+    command -v rmpc >/dev/null 2>&1 && return 0
+    case "$arch" in
+        x86_64) sum=b03d4b777cf0afe61107abb4ee847b7c6539b8f5c76555fd759cd15a6c1ff604 ;;
+        aarch64) sum=12d9bb3bcabfe90c0573afac9b11e20333262872966a8769967611b578ff7328 ;;
+    esac
+    say "Installing rmpc from the GitHub release..."
+    mkdir -p "$HOME/.local/bin" "$tmp/rmpc"
+    if retry curl -fSL --progress-bar -o "$tmp/rmpc.tgz" \
+            "https://github.com/mierak/rmpc/releases/download/v0.11.0/rmpc-v0.11.0-$arch-unknown-linux-gnu.tar.gz" &&
+        echo "$sum  $tmp/rmpc.tgz" | sha256sum -c --quiet - &&
+        tar xzf "$tmp/rmpc.tgz" -C "$tmp/rmpc"; then
+        install -m 755 "$tmp/rmpc/rmpc" "$HOME/.local/bin/rmpc"
+    else
+        warn "Could not install rmpc (Mod+M music player)."
     fi
 }
 
@@ -338,6 +358,13 @@ install_local_overrides() {
     fi
 }
 
+enable_music() {
+    # mpd runs per user (~/.config/mpd/mpd.conf), so turn off the system-wide units.
+    as_root systemctl disable --now mpd.service mpd.socket >/dev/null 2>&1
+    systemctl --user enable mpd.service mpDris2.service music-watch.service >/dev/null 2>&1 ||
+        warn "Could not enable music services. Run after login: systemctl --user enable --now mpd mpDris2 music-watch"
+}
+
 enable_ssh_agent() {
     # Sway runs ssh-add against $XDG_RUNTIME_DIR/openssh_agent at login.
     systemctl --user enable ssh-agent.socket >/dev/null 2>&1 ||
@@ -381,6 +408,7 @@ install_aria2_config
 install_local_overrides
 link_fd
 enable_ssh_agent
+enable_music
 install_killswitch
 install_yazi
 install_neovim_plugins
