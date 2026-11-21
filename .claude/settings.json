@@ -66,10 +66,15 @@
     ],
     "deny": [
       "Bash(*.credentials.json*)",
+      "Bash(*.git-credentials*)",
+      "Bash(*.vault-token*)",
       "Bash(*.zshrc.local*)",
+      "Bash(*/.config/git/credentials*)",
       "Bash(*/.gnupg/*)",
+      "Bash(*/.hermes/*)",
       "Bash(*/.omniroute/*)",
       "Bash(*/.ssh/*)",
+      "Bash(*notebook_secret*)",
       "Bash(env | *)",
       "Bash(env)",
       "Bash(export -p*)",
@@ -79,9 +84,14 @@
       "Read(~/.aws/**)",
       "Read(~/.claude/.credentials.json)",
       "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.config/git/credentials)",
+      "Read(~/.git-credentials)",
       "Read(~/.gnupg/**)",
+      "Read(~/.hermes/**)",
+      "Read(~/.local/share/jupyter/notebook_secret)",
       "Read(~/.omniroute/**)",
       "Read(~/.ssh/**)",
+      "Read(~/.vault-token)",
       "Read(~/.zshrc.local)"
     ]
   },
@@ -153,7 +163,20 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": false,
+    "context7@claude-plugins-official": false,
+    "cc-plugin-agents-md@builtin": true,
+    "cc-plugin-diff@builtin": true,
+    "superpowers@anthropic-plugin-directory": true,
+    "code-review-anthropics@anthropic-plugin-directory": true,
+    "skill-creator@anthropic-plugin-directory": true,
+    "code-simplifier@anthropic-plugin-directory": true,
+    "playwright@anthropic-plugin-directory": false,
+    "claude-md-management@anthropic-plugin-directory": true
+  },
   "outputStyle": "Concise",
+  "awaySummaryEnabled": false,
   "theme": "dark-ansi",
   "editorMode": "vim",
   "autoMode": {
@@ -189,6 +212,5 @@
       "**Org-specific CLIs**: None configured — personal tool wrappers in routine use: rtk, swaymsg, kitty, omniroute, fuzzel, makoctl, mpv, pactl, wob, zoxide, config (bare-repo git alias)",
       "routine under ~/.cfg (bare repo) prefix: config/git operations against $HOME work tree are expected and routine for this user"
     ]
-  },
-  "awaySummaryEnabled": false
+  }
 }
