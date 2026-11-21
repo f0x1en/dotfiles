@@ -122,17 +122,12 @@
     ),
     search: (
         case_sensitive: false,
-        ignore_diacritics: false,
+        ignore_diacritics: true,
         search_button: false,
         mode: Contains,
         tags: [
-            (value: "any",         label: "Any Tag"),
-            (value: "artist",      label: "Artist"),
-            (value: "album",       label: "Album"),
-            (value: "albumartist", label: "Album Artist"),
-            (value: "title",       label: "Title"),
+            (value: "any",         label: "Title, artist, album"),
             (value: "filename",    label: "Filename"),
-            (value: "genre",       label: "Genre"),
         ],
     ),
     artists: (
