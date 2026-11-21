@@ -40,7 +40,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   `mod+F7/F8/F9` call `mpc`. `mod+F10` runs `music shuffle`.
 - `~/.local/bin/music` holds the extras: `find` (fuzzel box over all tags + filename, rmpc `F`), `shuffle` (reorders the songs after the current one,
   spreading each folder out), `delete` (fuzzel confirm, then `gio trash`), `watch`.
-- The user wants rmpc defaults kept. Only small tweaks: 3 tabs (Queue, Directories,
-  Search), 2 search fields, `S` and `C-t` keys. No custom TUI. rmpc has no per-tab keys.
+- The user wants rmpc defaults kept. Only small tweaks: 2 tabs (Queue, Directories;
+  search is `F` = `music find`), `S`, `F` and `C-t` keys. No custom TUI. rmpc has no per-tab keys.
 - Song deleted by mistake: it is in `~/.local/share/Trash` and its `.trashinfo` has the original path.
 - The old mpv TUI was removed. It is still in git history before commit `59ffff2`.

@@ -62,7 +62,6 @@
             "gT":         PreviousTab,
             "1":          SwitchToTab("Queue"),
             "2":          SwitchToTab("Directories"),
-            "3":          SwitchToTab("Search"),
             "<C-u>":      Update,
             "<C-U>":      Rescan,
             "R":          AddRandom,
@@ -219,16 +218,6 @@
                 size: "100%",
                 direction: Vertical,
                 panes: [(pane: Pane(Directories), size: "100%", borders: "ALL", border_symbols: Rounded)],
-            )
-        ),
-        (
-            name: "Search",
-            borders: "ALL",
-            border_symbols: Rounded,
-            pane: Split(
-                size: "100%",
-                direction: Vertical,
-                panes: [(pane: Pane(Search), size: "100%", borders: "ALL", border_symbols: Rounded)],
             )
         ),
     ],
