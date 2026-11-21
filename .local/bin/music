@@ -2,6 +2,7 @@
 """music: extras for mpd (player UI is rmpc on mod+m).
 
 music shuffle           re-order the songs after the playing one, each folder spread out (empty queue: whole library)
+music find              one search box (fuzzel) over every song's tags and filename; enter plays it
 music delete            move the playing track to the trash (asks first), play the next one
 music watch             pause when the output switches away from headphones/bluetooth/HDMI/USB
 """
@@ -42,6 +43,30 @@ def shuffle():
     mpc("clear")
     mpc("add", stdin="\n".join(smart_order(files)) + "\n")
     mpc("play")
+
+
+def find():
+    """Pick a song by anything you remember (tags or file name, any case), then play it now."""
+    fmt = "\t".join(["%file%"] + [f"[%{t}%]" for t in ("title", "artist", "album", "albumartist", "genre", "date", "composer")])
+    rows = [r.split("\t") for r in mpc("-f", fmt, "search", "filename", "").split("\n") if r]
+    labels = []
+    for f, *tags in rows:
+        seen = [t for i, t in enumerate(tags) if t and t not in tags[:i]]
+        labels.append("  ·  ".join(seen + [f]))
+    pick = subprocess.run(["fuzzel", "--dmenu", "--index", "--width", "100", "--prompt", "Song: "],
+                          input="\n".join(labels) + "\n", capture_output=True, text=True).stdout.strip()
+    if not pick:
+        return
+    f = rows[int(pick)][0]
+    queue = [q for q in mpc("-f", "%file%", "playlist").split("\n") if q]
+    if f in queue:
+        mpc("play", str(queue.index(f) + 1))
+    elif mpc("-f", "%position%", "current").strip():
+        mpc("insert", f)
+        mpc("next")
+    else:
+        mpc("add", f)
+        mpc("play", str(len(queue) + 1))
 
 
 def delete():
@@ -95,6 +120,8 @@ def main():
     cmd, args = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("", [])
     if cmd == "shuffle" and not args:
         shuffle()
+    elif cmd == "find" and not args:
+        find()
     elif cmd == "delete" and not args:
         delete()
     elif cmd == "watch" and not args:

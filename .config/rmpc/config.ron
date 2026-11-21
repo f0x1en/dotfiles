@@ -35,6 +35,7 @@
         global: {
             "q":          Quit,
             "S":          ExternalCommand(command: ["music", "shuffle"], description: "Smart shuffle upcoming songs (music shuffle)"),
+            "F":          ExternalCommand(command: ["music", "find"], description: "Find a song: one box, any tag or filename (music find)"),
             "<C-t>":      ExternalCommand(command: ["music", "delete"], description: "Trash playing track (music delete)"),
             "?":          ShowHelp,
             ":":          CommandMode,

@@ -38,7 +38,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   Config `~/.config/rmpc/config.ron`, theme `themes/campbell.ron` (README palette).
 - `mod+m` runs `~/.config/sway/scripts/music-toggle` (kitty titled `music`, scratchpad).
   `mod+F7/F8/F9` call `mpc`. `mod+F10` runs `music shuffle`.
-- `~/.local/bin/music` holds the extras: `shuffle` (reorders the songs after the current one,
+- `~/.local/bin/music` holds the extras: `find` (fuzzel box over all tags + filename, rmpc `F`), `shuffle` (reorders the songs after the current one,
   spreading each folder out), `delete` (fuzzel confirm, then `gio trash`), `watch`.
 - The user wants rmpc defaults kept. Only small tweaks: 3 tabs (Queue, Directories,
   Search), 2 search fields, `S` and `C-t` keys. No custom TUI. rmpc has no per-tab keys.
