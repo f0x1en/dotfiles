@@ -8,14 +8,12 @@ vim.keymap.set("n", "k", "gk")
 local delete_blackhole = {
   -- Normal mode
   { "n", "d",  '"_d' },
-  { "n", "dd", '"_dd' },
   { "n", "D",  '"_D' },
   { "n", "x",  '"_x' },
   { "n", "X",  '"_X' },
 
   -- Change commands
   { "n", "c",  '"_c' },
-  { "n", "cc", '"_cc' },
   { "n", "C",  '"_C' },
   { "n", "s",  '"_s' },
   { "n", "S",  '"_S' },
@@ -88,15 +86,6 @@ vim.keymap.set("n", "<leader>uw", "<cmd>set wrap!<CR>", {
 })
 -- Clear search highlights
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Clear search highlighting" })
-
--- gx: open path/URL under cursor (or selection) without waiting for the app to exit
-vim.keymap.set("n", "gx", function()
-  vim.ui.open(vim.fn.expand("<cfile>"))
-end, { desc = "Open path or URL" })
-vim.keymap.set("x", "gx", function()
-  local text = table.concat(vim.fn.getregion(vim.fn.getpos("v"), vim.fn.getpos(".")), "")
-  vim.ui.open(text)
-end, { desc = "Open selection" })
 
 -- No side-by-side panes: split keys do nothing
 for _, k in ipairs({ "<C-w>v", "<C-w><C-v>", "<C-w>s", "<C-w><C-s>", "<C-w>n", "<C-w><C-n>" }) do
