@@ -187,7 +187,7 @@ install_omz() {
 install_tpm() {
     if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
         say "Installing tmux plugin manager..."
-        git clone --depth=1 https://github.com/tmux-plugins/tpm \
+        retry git clone --depth=1 https://github.com/tmux-plugins/tpm \
             "$HOME/.tmux/plugins/tpm" || {
             warn "Could not install tmux plugin manager."
             return 0
@@ -197,13 +197,8 @@ install_tpm() {
     command -v tmux >/dev/null 2>&1 || return 0
 
     say "Installing tmux plugins..."
-    if command -v timeout >/dev/null 2>&1; then
-        timeout 120 "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null 2>&1 ||
-            warn "tmux plugin installation failed. Open tmux and press prefix + I."
-    else
-        "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null 2>&1 ||
-            warn "tmux plugin installation failed. Open tmux and press prefix + I."
-    fi
+    timeout 120 "$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null 2>&1 ||
+        warn "tmux plugin installation failed. Open tmux and press prefix + I."
 }
 
 install_fonts() {
@@ -246,13 +241,8 @@ install_neovim_plugins() {
     command -v nvim >/dev/null 2>&1 || return 0
 
     say "Installing Neovim plugins..."
-    if command -v timeout >/dev/null 2>&1; then
-        timeout 300 nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 ||
-            warn "Neovim plugin installation failed. Run :Lazy sync inside nvim."
-    else
-        nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 ||
-            warn "Neovim plugin installation failed. Run :Lazy sync inside nvim."
-    fi
+    timeout 300 nvim --headless "+Lazy! sync" +qa >/dev/null 2>&1 ||
+        warn "Neovim plugin installation failed. Run :Lazy sync inside nvim."
 }
 
 install_release_bin() {
@@ -340,7 +330,7 @@ install_yazi() {
     [ "$(uname -m)" = x86_64 ] || return 0
     command -v unzip >/dev/null 2>&1 || return 0
     say "Installing yazi from the GitHub release..."
-    if curl -fSL --progress-bar \
+    if retry curl -fSL --progress-bar \
         "https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-musl.zip" \
         -o "$tmp/yazi.zip" && unzip -oq "$tmp/yazi.zip" -d "$tmp/yazi"; then
         mkdir -p "$HOME/.local/bin"
@@ -360,7 +350,7 @@ install_local_overrides() {
 
 enable_music() {
     # mpd runs per user (~/.config/mpd/mpd.conf), so turn off the system-wide units.
-    as_root systemctl disable --now mpd.service mpd.socket >/dev/null 2>&1
+    as_root systemctl disable --now mpd.service mpd.socket >/dev/null 2>&1 || true
     systemctl --user enable mpd.service mpDris2.service music-watch.service >/dev/null 2>&1 ||
         warn "Could not enable music services. Run after login: systemctl --user enable --now mpd mpDris2 music-watch"
 }
