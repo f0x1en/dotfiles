@@ -10,8 +10,8 @@ cat <<'HELP' | less -R
   Super + f              Fullscreen
 
  LAYOUT
-  Super + b              Split horizontally
-  Super + v              Split vertically
+  Super + b              Next window opens below
+  Super + v              Next window opens to the right
 
  WORKSPACES
   Super + 1–9            Switch workspace
@@ -19,6 +19,9 @@ cat <<'HELP' | less -R
 
  APPS & TOOLS
   Super + Return         Terminal
+  Super + w              Browser
+  Super + e              Files (yazi)
+  Super + t              Telegram (tele)
   Super + x              Run a command
   Super + /              This help menu
   Super + d              App launcher
@@ -26,6 +29,14 @@ cat <<'HELP' | less -R
   Super + Shift + n      Network
   Super + Shift + b      Bluetooth
   Super + Shift + a      Audio mixer
+  Super + Ctrl + b       Show/hide status bar
+  Super + Space          Switch keyboard layout (us/ir)
+
+ MUSIC
+  Super + m              Show/hide player (rmpc)
+  Super + F7 / F9        Previous/next song
+  Super + F8             Play/pause
+  Super + F10            Shuffle upcoming songs
 
  HARDWARE
   Super + F1             Mute/unmute audio

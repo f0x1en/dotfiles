@@ -20,11 +20,7 @@ case "$1" in
     vol-up)   wpctl set-mute $SINK 0; wpctl set-volume -l 1.0 $SINK 5%+; audio $SINK volume ;;
     vol-down) wpctl set-volume $SINK 5%-; audio $SINK volume ;;
     vol-mute) wpctl set-mute $SINK toggle; audio $SINK volume ;;
-    mic-mute) wpctl set-mute $SRC toggle
-              case "$(wpctl get-volume $SRC)" in
-                  *MUTED*) show 0 muted ;;
-                  *) show "$(wpctl get-volume $SRC | awk '{printf "%d", $2*100}')" mic ;;
-              esac ;;
+    mic-mute) wpctl set-mute $SRC toggle; audio $SRC mic ;;
     bright-up)   show "$(brightnessctl -m set 5%+ | cut -d, -f4 | tr -d %)" brightness ;;
     bright-down) show "$(brightnessctl -m set 5%- | cut -d, -f4 | tr -d %)" brightness ;;
 esac

@@ -39,8 +39,6 @@ exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DE
 exec_always sh -c 'pkill -x kanshi 2>/dev/null; exec kanshi'
 # status bar
 exec_always sh -c 'pkill -x waybar 2>/dev/null; exec waybar'
-# toggle status bar (waybar hides on SIGUSR1)
-bindsym $mod+Ctrl+b exec pkill -SIGUSR1 -x waybar
 # Notifications
 exec mako
 # Volume/brightness OSD
@@ -95,6 +93,12 @@ bindsym $mod+F7 exec mpc -q prev
 bindsym $mod+F8 exec mpc -q toggle
 bindsym $mod+F9 exec mpc -q next
 bindsym $mod+F10 exec ~/.local/bin/music shuffle
+# Files (yazi)
+bindsym $mod+e exec kitty --title files yazi
+# Telegram (tele)
+bindsym $mod+t exec kitty --title tele tele
+# Toggle status bar (waybar hides on SIGUSR1)
+bindsym $mod+Ctrl+b exec pkill -SIGUSR1 -x waybar
 # Clipboard
 bindsym $mod+c exec cliphist list | fuzzel --dmenu --with-nth 2 | cliphist decode | wl-copy
 # Focus
@@ -114,21 +118,20 @@ bindsym $mod+F3 exec ~/.config/sway/scripts/osd vol-up
 bindsym $mod+F4 exec ~/.config/sway/scripts/osd mic-mute
 bindsym $mod+F5 exec ~/.config/sway/scripts/osd bright-down
 bindsym $mod+F6 exec ~/.config/sway/scripts/osd bright-up
-## yazi
-bindsym $mod+e exec kitty --title files yazi
-## music: use mpv directly for now
-# change keyboard layout
-input type:keyboard {
-    xkb_layout "us,ir"
-    xkb_options "grp:win_space_toggle"
-}
+
 # Screenshot selected region and copy it to clipboard
 bindsym $mod+Print exec grim -g "$(slurp)" - | wl-copy
 # Screenshot full screen / selected region to ~/Pictures/screenshots
 bindsym $mod+Shift+Print exec sh -c 'mkdir -p ~/Pictures/screenshots && f=~/Pictures/screenshots/$(date +%F_%H-%M-%S).png && grim "$f" && notify-send -t 2000 Screenshot "$f"'
 bindsym $mod+Ctrl+Print exec sh -c 'mkdir -p ~/Pictures/screenshots && f=~/Pictures/screenshots/$(date +%F_%H-%M-%S).png && grim -g "$(slurp)" "$f" && notify-send -t 2000 Screenshot "$f"'
-## tele
-bindsym $mod+t exec kitty --title tele tele
+
+### Input
+
+# Change keyboard layout
+input type:keyboard {
+    xkb_layout "us,ir"
+    xkb_options "grp:win_space_toggle"
+}
 
 ### Workspaces
 
