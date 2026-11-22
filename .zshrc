@@ -6,11 +6,14 @@ export EDITOR=nvim
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent"
 export VISUAL=nvim
 
+export BUN_INSTALL="$HOME/.bun"
+
 typeset -U path PATH
 path=(
+    "$BUN_INSTALL/bin"
+    "$HOME/.local/bin"
     "$HOME/.local/lib/npm/bin"
     "$HOME/.opencode/bin"
-    "$HOME/.local/bin"
     "$HOME/.cargo/bin"
     $path
 )
@@ -171,20 +174,16 @@ reels() {
         command reels "$@"
 }
 
-# Claude Code through the local mixed proxy (no TUN needed)
-claude() {
-    local p=http://127.0.0.1:10808
+# Run a command through the local mixed proxy (no TUN needed)
+proxied() {
+    local p=http://127.0.0.1:10808 n=localhost,127.0.0.1,::1
     HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
-    NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
-        command claude "$@"
+    NO_PROXY=$n no_proxy=$n \
+        command "$@"
 }
 
-opencode() {
-    local p=http://127.0.0.1:10808
-    HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
-    NO_PROXY=localhost,127.0.0.1,::1 no_proxy=localhost,127.0.0.1,::1 \
-        command opencode "$@"
-}
+claude()   { proxied claude "$@" }
+opencode() { proxied opencode "$@" }
 
 # ── Aliases ──────────────────────────────────────────────────
 alias vim='nvim'
@@ -204,13 +203,13 @@ alias omniroute-off='pkill -f omniroute'
 alias apt-proxy-on='sudo mv /etc/apt/apt.conf.d/95proxy.off /etc/apt/apt.conf.d/95proxy'
 alias apt-proxy-off='sudo mv /etc/apt/apt.conf.d/95proxy /etc/apt/apt.conf.d/95proxy.off'
 
-# bare git dotfiles: .zshrc .tmux.conf .config/nvim .config/kitty
+# bare git dotfiles (see ~/README.md)
 alias config='git --git-dir="$HOME/.cfg" --work-tree="$HOME"'
 
-# clipboard history
 # fzf: Campbell
 export FZF_DEFAULT_OPTS="--color=bg:#0C0C0C,bg+:#242424,fg:#B8B8B8,fg+:#D4D4D4,hl:#E2B964,hl+:#E2B964,info:#6B6B6B,prompt:#B8B8B8,pointer:#D4D4D4,marker:#8FBF74,spinner:#C99A45,header:#6B6B6B,border:#2A2A2A"
 
+# clipboard history
 alias ch='cliphist list | fzf --no-sort --bind "j:down,k:up" | cliphist decode | wl-copy'
 
 # ── Tools ────────────────────────────────────────────────────
@@ -220,11 +219,6 @@ eval "$(zoxide init zsh)"
 if [[ -f "$HOME/.zshrc.local" ]]; then
     source "$HOME/.zshrc.local"
 fi
-export PATH="$HOME/.local/bin:$PATH"
 
 # bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+[[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
