@@ -130,7 +130,7 @@ c() {
 }
 
 # Run and orphan command (output goes to $BG_LOG if set, else discarded)
-bg() {
+run-bg() {
     nohup "$@" >>"${BG_LOG:-/dev/null}" 2>&1 </dev/null &!
 }
 
@@ -151,20 +151,20 @@ rv() {
     qemu-riscv64 "$out"
 }
 
-zathura() { bg zathura "$@" }
+zathura() { run-bg zathura "$@" }
 
-mousepad() { bg mousepad "$@" }
+mousepad() { run-bg mousepad "$@" }
 
 # scrcpy
 typeset -ga SCRCPY_OPTS=(-Sw -m1920 --max-fps=60 --power-off-on-close)
 
 phone-on() {
-    BG_LOG="$HOME/.local/state/phone.log" bg scrcpy $SCRCPY_OPTS
+    BG_LOG="$HOME/.local/state/phone.log" run-bg scrcpy $SCRCPY_OPTS
 }
 
 # omniroute
 omniroute-on() {
-    BG_LOG="$HOME/.local/state/omniroute.log" bg omniroute
+    BG_LOG="$HOME/.local/state/omniroute.log" run-bg omniroute
 }
 
 # Tools routed through the local proxy
