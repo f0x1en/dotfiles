@@ -291,7 +291,7 @@ Managed using a bare Git repository and the `config` alias defined in `.zshrc`.
 
 ```sh
 config status
-config add <tracked-file>
+config add -u <tracked-file>   # -u: never adds a new file
 config add -f <new-file>    # once, to start tracking it
 config diff --cached
 config commit -m "feat: describe change"
@@ -299,7 +299,9 @@ config push
 ```
 
 Because `$HOME` is the work tree, never use `config add -A`. Add explicit paths
-only. New files need `config add -f <file>` because `.gitignore` is `*`.
+only. Use `config add -u` for tracked files: plain `add` on a file inside a
+directory warns "paths are ignored" and exits 1, because `.gitignore` is `*`.
+New files need `config add -f <file>` once.
 Never `-f` a directory: check `config diff --cached --stat` before each commit.
 
 If untracked files are noisy, they are hidden with:

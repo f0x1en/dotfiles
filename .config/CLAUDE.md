@@ -7,6 +7,9 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
 - Bare git repo at `~/.cfg`, work tree `$HOME`. In Bash:
   `git --git-dir="$HOME/.cfg" --work-tree="$HOME" <cmd>`.
 - What is tracked and the palette: `~/README.md` ("What is tracked", "Palette").
+- `.gitignore` is `*`: stage tracked files with `add -u <path>` (plain `add` warns
+  and exits 1), new files with `add -f <file>`. Do not add `!*/`: it makes git read
+  nested `.gitignore` files that re-include files (notes, wordlists).
 - Stage explicit paths only. Never commit secrets: no `~/.ssh`, `~/.zshrc.local`,
   `~/.omniroute`, tokens, passwords. Check the staged diff before each commit.
 
