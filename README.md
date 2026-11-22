@@ -245,7 +245,7 @@ Other manual steps:
 Tracked: `.claude/CLAUDE.md`, `.claude/settings.json`, `.claude/statusline.sh`,
 `.claude/hooks/`, `.claude/skills/{park,where-am-i}`, `.config/rtk/config.toml`.
 Credentials, history, projects and handoff notes are never tracked (`.gitignore`
-ignores everything else under `.claude/`). Third-party skills: see
+ignores every file that is not already tracked). Third-party skills: see
 `.claude/skills/THIRD-PARTY.md`.
 
 | Piece | What it does |
@@ -272,9 +272,9 @@ These files are intentionally not tracked:
 | `.config/aria2/aria2.conf` | aria2 RPC secret |
 | `.config/opencode/auth.json` | OpenCode credentials |
 
-`.gitignore` also excludes SSH/GPG keys, password stores, keyrings, browser
-profiles, KDE/Plasma state, shell history, personal directories, and other
-machine-local data.
+`.gitignore` is one line, `*`: git ignores every file in `$HOME` that is not
+already tracked. Keys, password stores, browser profiles and history can only
+enter the repo through a deliberate `config add -f <file>`.
 
 Start with the example file:
 
@@ -291,16 +291,16 @@ Managed using a bare Git repository and the `config` alias defined in `.zshrc`.
 
 ```sh
 config status
-config add <file>
-config add -f <ignored-file>
+config add <tracked-file>
+config add -f <new-file>    # once, to start tracking it
 config diff --cached
 config commit -m "feat: describe change"
 config push
 ```
 
 Because `$HOME` is the work tree, never use `config add -A`. Add explicit paths
-only; `config add -f` is only for files intentionally tracked despite
-`.gitignore`.
+only. New files need `config add -f <file>` because `.gitignore` is `*`.
+Never `-f` a directory: check `config diff --cached --stat` before each commit.
 
 If untracked files are noisy, they are hidden with:
 
