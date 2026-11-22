@@ -123,5 +123,4 @@ fonts-noto-core
 fonts-noto-color-emoji
 btop
 tealdeer
-broot
 aria2

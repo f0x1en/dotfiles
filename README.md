@@ -45,7 +45,7 @@ tree. No symlinks are used; files are managed in place.
 | Desktop | `.config/mako/`, `.config/fuzzel/`, `.config/mimeapps.list`, `.config/user-dirs.dirs` |
 | GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini` |
 | Editor | `.config/nvim/` |
-| CLI tools | `.config/btop/`, `.config/broot/`, `.config/tealdeer/`, `.config/yazi/` |
+| CLI tools | `.config/btop/`, `.config/tealdeer/`, `.config/yazi/` |
 | Documents | `.config/pandoc/`, `.config/zathura/` |
 | Services | `.config/NetworkManager/dispatcher.d/90-netpref` |
 | Scripts | `.local/bin/clipmenu`, `.local/bin/download-batch`, `.local/bin/netpref` |
