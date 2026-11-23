@@ -1,0 +1,9 @@
+#!/bin/sh
+# Claude desktop app: always go through the mixed proxy, never direct.
+# --proxy-server covers the Chromium side; env vars cover Node and child
+# processes (Claude Code sessions, MCP servers).
+p=http://127.0.0.1:10808
+n=localhost,127.0.0.1,::1
+export HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p
+export NO_PROXY=$n no_proxy=$n
+exec /usr/bin/claude-desktop --proxy-server="$p" "$@"
