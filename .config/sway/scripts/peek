@@ -1,0 +1,29 @@
+#!/bin/sh
+# mod+Ctrl+N: float the last-focused window of workspace N over the current
+# workspace at opacity 0.8. Same key again (or any mod+Ctrl+N) sends it back.
+# The window carries a hidden mark _peekN so it knows where to return.
+n=$1
+tree=$(swaymsg -t get_tree)
+
+# Send back a window that is already peeking.
+old=$(printf '%s' "$tree" | jq -r '.. | .marks? // empty | .[] | select(startswith("_peek"))' | head -n1)
+if [ -n "$old" ]; then
+  w=${old#_peek}
+  swaymsg "[con_mark=\"^$old\$\"] opacity 1, floating disable, move container to workspace number $w, unmark $old" >/dev/null
+  [ "$w" = "$n" ] && exit 0
+  tree=$(swaymsg -t get_tree)
+fi
+
+cur=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .num')
+[ "$cur" = "$n" ] && exit 0
+
+# Follow the focus list from workspace N down to its last-focused window.
+id=$(printf '%s' "$tree" | jq --argjson n "$n" '
+  def leaf: if ((.nodes + .floating_nodes) | length) == 0 then .id
+    else .focus[0] as $f | (.nodes + .floating_nodes)[] | select(.id == $f) | leaf end;
+  first(.. | select(.type? == "workspace" and .num == $n) | leaf) // empty')
+[ -z "$id" ] && exit 0
+# Empty workspace: leaf returns the workspace itself.
+printf '%s' "$tree" | jq -e --argjson id "$id" '.. | select(.id? == $id and .type == "workspace")' >/dev/null && exit 0
+
+swaymsg "[con_id=$id] mark --add _peek$n, move container to workspace number $cur, floating enable, resize set width 100 ppt height 100 ppt, move position center, opacity 0.8, focus" >/dev/null

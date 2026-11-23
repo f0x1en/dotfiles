@@ -155,6 +155,16 @@ bindsym $mod+Shift+6 move container to workspace number 6
 bindsym $mod+Shift+7 move container to workspace number 7
 bindsym $mod+Shift+8 move container to workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9
+# Peek: show workspace N's window over this one, see-through (toggle)
+bindsym $mod+Ctrl+1 exec ~/.config/sway/scripts/peek 1
+bindsym $mod+Ctrl+2 exec ~/.config/sway/scripts/peek 2
+bindsym $mod+Ctrl+3 exec ~/.config/sway/scripts/peek 3
+bindsym $mod+Ctrl+4 exec ~/.config/sway/scripts/peek 4
+bindsym $mod+Ctrl+5 exec ~/.config/sway/scripts/peek 5
+bindsym $mod+Ctrl+6 exec ~/.config/sway/scripts/peek 6
+bindsym $mod+Ctrl+7 exec ~/.config/sway/scripts/peek 7
+bindsym $mod+Ctrl+8 exec ~/.config/sway/scripts/peek 8
+bindsym $mod+Ctrl+9 exec ~/.config/sway/scripts/peek 9
 # Resize windows directly
 bindsym $mod+Ctrl+h resize grow width 75 px
 bindsym $mod+Ctrl+j resize shrink height 75 px
