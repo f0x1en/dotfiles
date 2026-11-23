@@ -34,8 +34,9 @@ back() {
 case "$1" in
   # Wait for the next workspace switch, then send the window back.
   watch)
-    # One event per call: swaymsg -m buffers its output when piped.
-    while ev=$(swaymsg -t subscribe '["workspace"]'); do
+    # Act inside the loop: code after the pipe would wait for swaymsg to exit,
+    # and swaymsg exits only when it fails to write the next event.
+    swaymsg -t subscribe -m '["workspace"]' | while read -r ev; do
       printf '%s' "$ev" | jq -e '.change == "focus"' >/dev/null && exec "$0" end
     done
     exit 0 ;;
