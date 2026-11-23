@@ -34,7 +34,10 @@ back() {
 case "$1" in
   # Wait for the next workspace switch, then send the window back.
   watch)
-    swaymsg -t subscribe -m '["workspace"]' | jq -n -e 'first(inputs | select(.change == "focus"))' >/dev/null && exec "$0" end
+    # One event per call: swaymsg -m buffers its output when piped.
+    while ev=$(swaymsg -t subscribe '["workspace"]'); do
+      printf '%s' "$ev" | jq -e '.change == "focus"' >/dev/null && exec "$0" end
+    done
     exit 0 ;;
   end) back >/dev/null; exit 0 ;;
 esac
