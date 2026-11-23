@@ -1,21 +1,41 @@
 #!/bin/sh
-# mod+Ctrl+N: float the last-focused window of workspace N over the current
-# workspace at opacity 0.8. Same key again (or any mod+Ctrl+N) sends it back.
+# Usage: peek N | peek up | peek down
+# peek N (mod+Ctrl+N): float the last-focused window of workspace N over the
+# current workspace, see-through. Keyboard focus stays on the window you were on.
+# Same key again (or any mod+Ctrl+N) sends it back.
 # The window carries a hidden mark _peekN so it knows where to return.
+# peek up/down (mod+Ctrl+=/-): opacity in 10% steps, 10-100%, shown on wob.
+# The level is remembered for later peeks until logout.
+STATE="$XDG_RUNTIME_DIR/peek-opacity"
+WOB="$XDG_RUNTIME_DIR/wob.sock"
+op=$(cat "$STATE" 2>/dev/null || echo 80)
+
+case "$1" in
+  up|down)
+    swaymsg -t get_marks | grep -q '"_peek' || exit 0
+    [ "$1" = up ] && op=$((op + 10)) || op=$((op - 10))
+    [ "$op" -gt 100 ] && op=100
+    [ "$op" -lt 10 ] && op=10
+    echo "$op" > "$STATE"
+    swaymsg "[con_mark=\"^_peek\"] opacity $(awk "BEGIN{print $op/100}")" >/dev/null
+    [ -p "$WOB" ] && echo "$op" > "$WOB"
+    exit 0 ;;
+esac
+
 n=$1
-tree=$(swaymsg -t get_tree)
 
 # Send back a window that is already peeking.
-old=$(printf '%s' "$tree" | jq -r '.. | .marks? // empty | .[] | select(startswith("_peek"))' | head -n1)
+old=$(swaymsg -t get_marks | jq -r '.[] | select(startswith("_peek"))' | head -n1)
 if [ -n "$old" ]; then
   w=${old#_peek}
   swaymsg "[con_mark=\"^$old\$\"] opacity 1, floating disable, move container to workspace number $w, unmark $old" >/dev/null
   [ "$w" = "$n" ] && exit 0
-  tree=$(swaymsg -t get_tree)
 fi
 
+tree=$(swaymsg -t get_tree)
 cur=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .num')
 [ "$cur" = "$n" ] && exit 0
+prev=$(printf '%s' "$tree" | jq '.. | select(.focused? == true) | .id')
 
 # Follow the focus list from workspace N down to its last-focused window.
 id=$(printf '%s' "$tree" | jq --argjson n "$n" '
@@ -26,4 +46,4 @@ id=$(printf '%s' "$tree" | jq --argjson n "$n" '
 # Empty workspace: leaf returns the workspace itself.
 printf '%s' "$tree" | jq -e --argjson id "$id" '.. | select(.id? == $id and .type == "workspace")' >/dev/null && exit 0
 
-swaymsg "[con_id=$id] mark --add _peek$n, move container to workspace number $cur, floating enable, resize set width 100 ppt height 100 ppt, move position center, opacity 0.8, focus" >/dev/null
+swaymsg "[con_id=$id] mark --add _peek$n, move container to workspace number $cur, floating enable, resize set width 100 ppt height 100 ppt, move position center, opacity $(awk "BEGIN{print $op/100}"); [con_id=$prev] focus" >/dev/null

@@ -165,8 +165,8 @@ bindsym $mod+Ctrl+6 exec ~/.config/sway/scripts/peek 6
 bindsym $mod+Ctrl+7 exec ~/.config/sway/scripts/peek 7
 bindsym $mod+Ctrl+8 exec ~/.config/sway/scripts/peek 8
 bindsym $mod+Ctrl+9 exec ~/.config/sway/scripts/peek 9
-bindsym $mod+Ctrl+equal [con_mark="^_peek"] opacity plus 0.1
-bindsym $mod+Ctrl+minus [con_mark="^_peek"] opacity minus 0.1
+bindsym $mod+Ctrl+equal exec ~/.config/sway/scripts/peek up
+bindsym $mod+Ctrl+minus exec ~/.config/sway/scripts/peek down
 # Resize windows directly
 bindsym $mod+Ctrl+h resize grow width 75 px
 bindsym $mod+Ctrl+j resize shrink height 75 px
