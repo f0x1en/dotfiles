@@ -124,3 +124,13 @@ fonts-noto-color-emoji
 btop
 tealdeer
 aria2
+
+# Computer vision (ocv project): GPU/iGPU compute, video decode, camera tools
+intel-opencl-icd
+intel-media-va-driver-non-free
+vainfo
+clinfo
+nvtop
+v4l-utils
+guvcview
+sqlite3
