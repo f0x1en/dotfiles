@@ -1,0 +1,8 @@
+#!/bin/sh
+# greetd/tuigreet session wrapper: start the session through a zsh login shell,
+# so ~/.zprofile (PATH with ~/.local/bin, ~/.cargo/bin) is loaded, as sddm did.
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-sway:wlroots}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-sway}"
+export DESKTOP_SESSION="${DESKTOP_SESSION:-sway}"
+exec /usr/bin/zsh -l -c 'exec "$@"' zsh "$@"
