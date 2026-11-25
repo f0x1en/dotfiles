@@ -53,9 +53,6 @@ exec wl-paste --watch cliphist store
 # Idle: no idle lock or screen-off (they interrupted long-running work); still lock before suspend.
 # To bring them back, add to the swayidle line: timeout 600 'swaylock -f' timeout 900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"'
 exec swayidle -w before-sleep 'swaylock -f'
-# v2rayn
-assign [class="v2rayN"] workspace number 9
-exec /usr/bin/v2rayn
 
 ### Key bindings
 

@@ -14,7 +14,12 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   `~/.omniroute`, tokens, passwords. Check the staged diff before each commit.
 
 ## Network proxy
-- Mixed (HTTP + SOCKS) proxy at `127.0.0.1:10808`. Use it when a direct
+- Mixed (HTTP + SOCKS) proxy at `127.0.0.1:10808` (HTTP also on `10809`), served by
+  Bushuray (xray TUI client, replaced v2rayN 2026-11-25): user service `bushuray`
+  (`$HOME/.local/opt/bushuray`, GitHub release v0.2.3, not apt), TUI `bushuray`,
+  config `$HOME/.config/bushuray/config.json`, data `$HOME/.local/share/bushuray`.
+  Never stop it from a Claude session without a detached rollback: Claude's own traffic uses it.
+- Use it when a direct
   download hangs or fails: `curl -x http://127.0.0.1:10808 --max-time 120 ...`,
   or `http_proxy=... https_proxy=...` for other tools. Always set a timeout.
   Tell the user when the proxy was used.

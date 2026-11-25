@@ -1,0 +1,21 @@
+{
+  "socks-port": 10808,
+  "http-port": 10809,
+  "core-tcp-port": 4897,
+  "test-port-range": {
+    "start": 3095,
+    "end": 3200
+  },
+  "test-url": "https://www.gstatic.com/generate_204",
+  "no-background": false,
+  "auto-connect-on-start": true,
+  "remove-failed-profiles": false,
+  "subscription-user-agent": "v2rayN",
+  "dns": {
+    "servers": [
+      "1.1.1.1"
+    ],
+    "query-strategy": "UseIP",
+    "mode": "proxy"
+  }
+}
