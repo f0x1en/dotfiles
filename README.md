@@ -165,7 +165,9 @@ and fetches `yazi` from its GitHub release. Install `scrcpy` by hand if needed.
 warns.
 
 On a minimal install (no desktop, e.g. a VM) the installer pulls in the whole
-Sway stack and `sddm`, which then owns the login screen. A normal user needs
+Sway stack and `greetd`, which then owns the login screen. For the tuigreet
+login used here, set `command = "tuigreet --time --remember --asterisks --cmd sway"`
+in `/etc/greetd/config.toml` (not tracked). A normal user needs
 `sudo` first (`su -`, then `apt-get install sudo git curl ca-certificates` and
 `usermod -aG sudo USER`, then log in again). Do not run the installer as root:
 it would configure `/root`. In VMware enable 3D acceleration, or start Sway with

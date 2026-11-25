@@ -36,8 +36,8 @@ xwayland
 polkitd
 lxpolkit
 udiskie
-sddm
-sddm-theme-debian-breeze
+greetd
+tuigreet
 libpam-systemd
 xdg-desktop-portal-wlr
 
@@ -90,7 +90,6 @@ libdbus-1-dev
 # Connectivity
 network-manager
 bluez
-kdeconnect
 
 # Browser
 firefox-esr
