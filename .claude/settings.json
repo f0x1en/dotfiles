@@ -1,9 +1,9 @@
 {
   "env": {
-    "HTTP_PROXY": "http://127.0.0.1:10809",
-    "HTTPS_PROXY": "http://127.0.0.1:10809",
-    "http_proxy": "http://127.0.0.1:10809",
-    "https_proxy": "http://127.0.0.1:10809",
+    "HTTP_PROXY": "http://127.0.0.1:10808",
+    "HTTPS_PROXY": "http://127.0.0.1:10808",
+    "http_proxy": "http://127.0.0.1:10808",
+    "https_proxy": "http://127.0.0.1:10808",
     "NO_PROXY": "localhost,127.0.0.1,::1",
     "no_proxy": "localhost,127.0.0.1,::1",
     "CLAUDE_CODE_HIDE_CWD": "1"
@@ -190,7 +190,7 @@
       "**Trusted repo**: dotfiles bare repo ~/.cfg with $HOME as work tree. Remote origin = github.com (user own repo). Pushing to origin is routine.",
       "**Other repos**: project repos under $HOME are the user own work; their configured remotes are trusted.",
       "**Secrets**: paths in permissions.deny (~/.ssh, ~/.gnupg, ~/.omniroute, ~/.hermes, ~/.zshrc.local, credential and token files). Never read, print, commit or send them.",
-      "**Network**: all traffic goes through the local proxy (SOCKS 127.0.0.1:10808, HTTP 127.0.0.1:10809). Public paste or gist services are outside the trust boundary."
+      "**Network**: all traffic goes through the local proxy 127.0.0.1:10808. Public paste or gist services are outside the trust boundary."
     ]
   }
 }

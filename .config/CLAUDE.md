@@ -14,8 +14,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   `~/.omniroute`, tokens, passwords. Check the staged diff before each commit.
 
 ## Network proxy
-- Proxy: SOCKS at `127.0.0.1:10808`, HTTP at `127.0.0.1:10809` (10808 also accepts HTTP,
-  but HTTP users point at 10809). Served by
+- Mixed (HTTP + SOCKS) proxy at `127.0.0.1:10808`; every client uses it (10809 is HTTP-only, unused). Served by
   Bushuray (xray TUI client, replaced v2rayN 2026-11-25): user service `bushuray`
   (`$HOME/.local/opt/bushuray`, GitHub release v0.2.3, not apt), TUI `bushuray`,
   config `$HOME/.config/bushuray/config.json`, data `$HOME/.local/share/bushuray`.
@@ -25,7 +24,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   config.json holds server credentials, not tracked). `proxy-watch` switches to it after
   3 failed checks and notifies; back with `proxy use bushuray`. `proxy status` checks both ports.
 - Use it when a direct
-  download hangs or fails: `curl -x http://127.0.0.1:10809 --max-time 120 ...`,
+  download hangs or fails: `curl -x http://127.0.0.1:10808 --max-time 120 ...`,
   or `http_proxy=... https_proxy=...` for other tools. Always set a timeout.
   Tell the user when the proxy was used.
 - apt uses it by default through `/etc/apt/apt.conf.d/95proxy` (not tracked).
