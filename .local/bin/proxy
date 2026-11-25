@@ -4,8 +4,10 @@
 # proxy status            engine in use and a live check of both ports
 # proxy use bushuray      Bushuray (TUI: bushuray), the default
 # proxy use fallback      v2rayN's xray core with its last config (~/.local/share/proxy-fallback)
+# proxy retry             try Bushuray again; if it fails, go back to the fallback
 # proxy watch             every 20 s: if Bushuray fails 3 checks in a row, switch to the fallback
-#                         and notify (runs as proxy-watch.service; never switches back by itself)
+#                         and notify; while on the fallback, retry Bushuray every 10 min
+#                         (runs as proxy-watch.service)
 #
 # The choice persists across reboots. Switching drops the proxy for a few seconds.
 
@@ -40,9 +42,17 @@ status() {
     done
 }
 
+retry() { # true when Bushuray works again
+    use bushuray >/dev/null
+    if check socks5h://127.0.0.1:10808; then status; return 0; fi
+    echo "Bushuray still fails, back to the fallback"
+    use fallback
+    return 1
+}
+
 watch() {
     sleep 60 # at login the network is not up yet: early checks fail and switch for nothing
-    fails=0
+    fails=0 waited=0
     while :; do
         if [ "$(engine)" = bushuray ] && ! check socks5h://127.0.0.1:10808; then
             fails=$((fails + 1))
@@ -55,6 +65,15 @@ watch() {
                 "Bushuray failed 3 checks. Now on v2rayN's xray. Back: proxy use bushuray"
             fails=0
         fi
+        if [ "$(engine)" = fallback ]; then
+            waited=$((waited + 20))
+            if [ $waited -ge 600 ]; then
+                waited=0
+                retry >/dev/null && notify-send -a proxy "Proxy back on Bushuray" "Retry worked."
+            fi
+        else
+            waited=0
+        fi
         sleep 20
     done
 }
@@ -62,6 +81,7 @@ watch() {
 case "$1" in
     status | "") status ;;
     use) use "$2" ;;
+    retry) retry ;;
     watch) watch ;;
-    *) sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
