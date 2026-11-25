@@ -1,0 +1,9 @@
+[Unit]
+Description=Desktop notifications for phone SMS and incoming calls over adb (phonectl watch)
+
+[Service]
+ExecStart=%h/.local/bin/phonectl watch
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

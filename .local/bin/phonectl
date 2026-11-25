@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""phonectl: SMS and calls of the USB-connected Android phone, over adb (needs Termux + Termux:API on the phone).
+
+phonectl sms [N]             last N messages, newest last (default 20)
+phonectl thread WHO [N]      last N messages with one contact or number
+phonectl send WHO TEXT...    send an SMS
+phonectl call WHO            dial
+phonectl answer              pick up the ringing call
+phonectl hangup              end or decline the call
+phonectl contacts            list phone contacts
+phonectl watch               desktop notification for new SMS and incoming calls (runs as phone-watch.service)
+
+WHO is a number or part of a contact name.
+"""
+import json, re, subprocess, sys, threading, time
+
+T = "/data/data/com.termux/files"
+TERMUX_ENV = (f"export PREFIX={T}/usr HOME={T}/home PATH={T}/usr/bin "
+              f"LD_PRELOAD={T}/usr/lib/libtermux-exec.so;")
+
+
+def adb(*args, check=True):
+    return subprocess.run(["adb", "shell", *args], capture_output=True, text=True, check=check).stdout
+
+
+def termux(cmd):
+    """Run a command inside Termux (run-as works because the GitHub build is debuggable)."""
+    out = adb(f"run-as com.termux {T}/usr/bin/bash -c {quote(TERMUX_ENV + cmd)}")
+    return json.loads(out) if out.strip() else None
+
+
+def quote(s):
+    return "'" + s.replace("'", "'\\''") + "'"
+
+
+def digits(n):
+    return re.sub(r"\D", "", n or "")[-10:]
+
+
+_contacts = None
+
+
+def contacts():
+    global _contacts
+    if _contacts is None:
+        _contacts = termux("termux-contact-list") or []
+    return _contacts
+
+
+def name_of(number):
+    d = digits(number)
+    for c in contacts():
+        if d and digits(c["number"]) == d:
+            return c["name"]
+    return number
+
+
+def resolve(who):
+    """Number as given, or the number of the one contact whose name contains WHO."""
+    if re.fullmatch(r"[+\d][\d\s-]*", who):
+        return re.sub(r"[\s-]", "", who)
+    hits = {c["number"]: c["name"] for c in contacts() if who.lower() in c["name"].lower()}
+    if len(hits) != 1:
+        sys.exit(f"phonectl: '{who}' matches {len(hits)} contacts: " + ", ".join(f"{v} {k}" for k, v in hits.items()))
+    return next(iter(hits))
+
+
+def show(msgs):
+    for m in sorted(msgs, key=lambda m: m["received"]):
+        arrow = "<" if m["type"] == "inbox" else ">"
+        print(f"{m['received'][:16]} {arrow} {name_of(m['number'])}: {m['body']}")
+
+
+def sms(n=20):
+    show(termux(f"termux-sms-list -l {int(n)} -t all"))
+
+
+def thread(who, n=20):
+    number = resolve(who)
+    show(termux(f"termux-sms-list -l {int(n)} -t all -f {quote(number)}"))
+
+
+def send(who, *text):
+    if not text:
+        sys.exit("phonectl: no text")
+    number = resolve(who)
+    termux(f"termux-sms-send -n {quote(number)} {quote(' '.join(text))}")
+    print(f"sent to {name_of(number)} ({number})")
+
+
+def call(who):
+    number = resolve(who)
+    adb("am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{number}")
+    print(f"calling {name_of(number)} ({number})")
+
+
+def notify(title, body, actions=()):
+    """Desktop notification. With actions, returns the clicked action name (blocks until click or close)."""
+    args = ["notify-send", "-a", "phone", title, body] + [f"--action={a}={a.title()}" for a in actions]
+    if actions:
+        args += ["-u", "critical"]
+    return subprocess.run(args, capture_output=True, text=True).stdout.strip()
+
+
+def new_sms(after):
+    out = adb("content", "query", "--uri", "content://sms/inbox", "--projection", "_id:address:body",
+              "--where", f"_id\\>{after}", "--sort", "'_id ASC'")
+    for row in re.split(r"(?m)^Row: \d+ ", out)[1:]:
+        m = re.match(r"_id=(\d+), address=(.*?), body=(.*)", row, re.S)
+        if m:
+            yield int(m[1]), m[2], m[3].strip()
+
+
+def call_state():
+    out = adb("dumpsys", "telephony.registry")
+    state = re.search(r"mCallState=(\d)", out)
+    number = re.search(r"mCallIncomingNumber=(\S*)", out)
+    return (int(state[1]) if state else 0), (number[1] if number else "")
+
+
+def on_ring(number):
+    who = name_of(number) if number else "unknown number"
+    act = notify("Incoming call", who, actions=("answer", "hangup"))
+    if act == "answer":
+        adb("input", "keyevent", "KEYCODE_CALL")
+    elif act == "hangup":
+        adb("input", "keyevent", "KEYCODE_ENDCALL")
+
+
+def watch():
+    last, ringing = None, False
+    while True:
+        try:
+            subprocess.run(["adb", "wait-for-device"], check=True)
+            if last is None:
+                top = adb("content", "query", "--uri", "content://sms/inbox", "--projection", "_id",
+                          "--sort", "'_id DESC LIMIT 1'")
+                last = int(re.search(r"_id=(\d+)", top)[1]) if "_id=" in top else 0
+            for i, addr, body in new_sms(last):
+                notify(f"SMS {name_of(addr)}", body)
+                last = i
+            state, number = call_state()
+            if state == 1 and not ringing:
+                threading.Thread(target=on_ring, args=(number,), daemon=True).start()
+            ringing = state == 1
+        except subprocess.CalledProcessError:
+            pass  # cable pulled mid-poll: wait-for-device catches it next round
+        time.sleep(2)
+
+
+CMDS = {"sms": sms, "thread": thread, "send": send, "call": call, "watch": watch,
+        "answer": lambda: adb("input", "keyevent", "KEYCODE_CALL"),
+        "hangup": lambda: adb("input", "keyevent", "KEYCODE_ENDCALL"),
+        "contacts": lambda: [print(f"{c['name']}: {c['number']}") for c in contacts()]}
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
+        sys.exit(__doc__)
+    try:
+        CMDS[sys.argv[1]](*sys.argv[2:])
+    except TypeError:
+        sys.exit(__doc__)
