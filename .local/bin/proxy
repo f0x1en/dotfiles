@@ -41,6 +41,7 @@ status() {
 }
 
 watch() {
+    sleep 60 # at login the network is not up yet: early checks fail and switch for nothing
     fails=0
     while :; do
         if [ "$(engine)" = bushuray ] && ! check socks5h://127.0.0.1:10808; then
