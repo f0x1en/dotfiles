@@ -1,10 +1,10 @@
 [Unit]
-Description=Bushuray core: xray proxy on 127.0.0.1:10808 (SOCKS + HTTP), managed with the bushuray TUI
+Description=Bushuray core: xray proxy, SOCKS 127.0.0.1:10808 + HTTP 127.0.0.1:10809, managed with the bushuray TUI
 
 [Service]
 WorkingDirectory=%h/.local/opt/bushuray
 # subscriptions are fetched through the proxy itself
-Environment=HTTPS_PROXY=http://127.0.0.1:10808 HTTP_PROXY=http://127.0.0.1:10808
+Environment=HTTPS_PROXY=http://127.0.0.1:10809 HTTP_PROXY=http://127.0.0.1:10809
 ExecStart=%h/.local/opt/bushuray/bushuray-core
 Restart=always
 RestartSec=2

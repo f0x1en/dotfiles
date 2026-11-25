@@ -176,7 +176,7 @@ reels() {
 
 # Run a command through the local mixed proxy (no TUN needed)
 proxied() {
-    local p=http://127.0.0.1:10808 n=localhost,127.0.0.1,::1
+    local p=http://127.0.0.1:10809 n=localhost,127.0.0.1,::1
     HTTP_PROXY=$p HTTPS_PROXY=$p http_proxy=$p https_proxy=$p \
     NO_PROXY=$n no_proxy=$n \
         command "$@"
