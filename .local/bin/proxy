@@ -1,0 +1,66 @@
+#!/bin/sh
+# proxy: which engine serves 127.0.0.1:10808 (SOCKS/mixed) and :10809 (HTTP).
+#
+# proxy status            engine in use and a live check of both ports
+# proxy use bushuray      Bushuray (TUI: bushuray), the default
+# proxy use fallback      v2rayN's xray core with its last config (~/.local/share/proxy-fallback)
+# proxy watch             every 20 s: if Bushuray fails 3 checks in a row, switch to the fallback
+#                         and notify (runs as proxy-watch.service; never switches back by itself)
+#
+# The choice persists across reboots. Switching drops the proxy for a few seconds.
+
+check() { # $1 = proxy URL; true when a request through it works
+    curl -s -o /dev/null -m 10 --noproxy '' -x "$1" -w '%{http_code}' https://www.gstatic.com/generate_204 | grep -q 204
+}
+
+engine() {
+    if systemctl --user -q is-active bushuray.service; then echo bushuray
+    elif systemctl --user -q is-active proxy-fallback.service; then echo fallback
+    else echo none; fi
+}
+
+use() { # $1 = bushuray | fallback
+    case "$1" in
+        bushuray) on=bushuray.service off=proxy-fallback.service ;;
+        fallback) on=proxy-fallback.service off=bushuray.service ;;
+        *) echo "usage: proxy use bushuray|fallback" >&2; exit 2 ;;
+    esac
+    systemctl --user disable -q "$off"
+    systemctl --user enable -q "$on"
+    systemctl --user start "$on" # Conflicts= stops the other one first
+    i=0
+    while [ $i -lt 20 ]; do check http://127.0.0.1:10808 && break; sleep 1; i=$((i + 1)); done
+    status
+}
+
+status() {
+    echo "engine: $(engine)"
+    for p in socks5h://127.0.0.1:10808 http://127.0.0.1:10808 http://127.0.0.1:10809; do
+        if check "$p"; then echo "  ok   $p"; else echo "  FAIL $p"; fi
+    done
+}
+
+watch() {
+    fails=0
+    while :; do
+        if [ "$(engine)" = bushuray ] && ! check socks5h://127.0.0.1:10808; then
+            fails=$((fails + 1))
+        else
+            fails=0
+        fi
+        if [ $fails -ge 3 ]; then
+            use fallback >/dev/null
+            notify-send -a proxy -u critical "Proxy switched to fallback" \
+                "Bushuray failed 3 checks. Now on v2rayN's xray. Back: proxy use bushuray"
+            fails=0
+        fi
+        sleep 20
+    done
+}
+
+case "$1" in
+    status | "") status ;;
+    use) use "$2" ;;
+    watch) watch ;;
+    *) sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

@@ -1,4 +1,5 @@
 [Unit]
+Conflicts=proxy-fallback.service
 Description=Bushuray core: xray proxy, SOCKS 127.0.0.1:10808 + HTTP 127.0.0.1:10809, managed with the bushuray TUI
 
 [Service]

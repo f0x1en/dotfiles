@@ -1,0 +1,13 @@
+[Unit]
+Description=Fallback proxy: v2rayN's xray core and last config (mixed 127.0.0.1:10808, HTTP 127.0.0.1:10809)
+Conflicts=bushuray.service
+
+[Service]
+WorkingDirectory=%h/.local/share/proxy-fallback
+Environment=XRAY_LOCATION_ASSET=%h/.local/share/proxy-fallback
+ExecStart=%h/.local/share/proxy-fallback/xray run -c config.json
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

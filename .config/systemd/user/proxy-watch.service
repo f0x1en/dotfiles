@@ -1,0 +1,9 @@
+[Unit]
+Description=Switch the proxy to the fallback when Bushuray stops working (proxy watch)
+
+[Service]
+ExecStart=%h/.local/bin/proxy watch
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
