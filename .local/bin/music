@@ -96,7 +96,7 @@ Super+F7 F8 F9   previous / pause / next (anywhere)"""
 
 
 def keys():
-    subprocess.run(["fuzzel", "--dmenu", "--width", "70", "--lines", "23", "--prompt", "Keys: "],
+    subprocess.run(["fuzzel", "--dmenu", "--width", "62", "--lines", "12", "--prompt", "Keys: "],
                    input=KEYS + "\n", capture_output=True, text=True)
 
 
