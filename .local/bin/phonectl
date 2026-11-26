@@ -78,7 +78,8 @@ def contacts():
         # src: "phone" (phone storage, full edit), "sim", or the app that syncs it (read-only here)
         _contacts = [{"name": r["display_name"], "number": r["data1"], "id": r["raw_contact_id"],
                       "src": "phone" if r["account_type"] in ("NULL", "vnd.sec.contact.phone") else r["account_type"].split(".")[-1]}
-                     for r in query("content://com.android.contacts/data/phones", "raw_contact_id:account_type:display_name:data1")]
+                     for r in query("content://com.android.contacts/data/phones", "raw_contact_id:account_type:display_name:data1")
+                     if r["account_type"] != "vnd.sec.contact.sim"]  # Samsung's copy of SIM contacts; icc/adn below has them all
         # SIM contacts are not in data/phones; icc/adn ignores --projection, so match up to emails
         _contacts += [{"name": r["name"], "number": r["number"], "src": "sim"}
                       for r in query("content://icc/adn", "name:number:emails") if r["number"]]
