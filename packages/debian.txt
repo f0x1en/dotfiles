@@ -81,6 +81,8 @@ wireplumber
 
 # Rust toolchain + build deps for: cargo install wiremix bluetui wlctl
 cargo
+rust-clippy
+rustfmt
 pkg-config
 clang
 libpipewire-0.3-dev
