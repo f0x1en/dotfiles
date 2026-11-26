@@ -3,6 +3,7 @@
 
 music shuffle           re-order the songs after the playing one, each folder spread out (empty queue: whole library)
 music find              one search box (fuzzel) over every song's tags and filename; enter plays it
+music keys              short searchable list of the rmpc keys (rmpc ?)
 music delete            move the playing track to the trash (asks first), play the next one
 music watch             pause when the output switches away from headphones/bluetooth/HDMI/USB
 """
@@ -69,6 +70,36 @@ def find():
         mpc("play", str(len(queue) + 1))
 
 
+KEYS = """\
+Enter      play the song (queues its folder) / open folder
+P          play this song next, now (queue stays)
+a          add selected song or folder to the end of the queue
+D          remove from queue (Queue tab)
+F          find a song by any word
+/          search the list on screen (n = next match)
+p          pause / play
+< >        previous / next song
+f b        skip forward / back in the song
+, .        volume down / up
+S          shuffle the songs coming up
+Ctrl+t     move the playing song to the trash (asks)
+1 2        Queue tab / Folders tab
+Up Down    move;   Left Right = back / open folder
+Space      select several rows (then a or D)
+z          repeat on/off
+v          single on/off (on = stops after each song)
+x          random on/off
+q          close window (music keeps playing)
+F1         every rmpc key (long list)
+Super+m    show / hide this window
+Super+F7 F8 F9   previous / pause / next (anywhere)"""
+
+
+def keys():
+    subprocess.run(["fuzzel", "--dmenu", "--width", "70", "--lines", "23", "--prompt", "Keys: "],
+                   input=KEYS + "\n", capture_output=True, text=True)
+
+
 def delete():
     rel = mpc("-f", "%file%", "current").strip()
     if not rel:
@@ -122,6 +153,8 @@ def main():
         shuffle()
     elif cmd == "find" and not args:
         find()
+    elif cmd == "keys" and not args:
+        keys()
     elif cmd == "delete" and not args:
         delete()
     elif cmd == "watch" and not args:

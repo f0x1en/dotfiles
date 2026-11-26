@@ -171,7 +171,7 @@
     components: {
         "key_hints": Pane(Property(
             content: [
-                (kind: Text("Enter play/open   P play next   a add   F find   p pause   < > prev/next   , . volume   1 Queue  2 Folders   ? all keys   q close"), style: (fg: "#B8B8B8")),
+                (kind: Text("Enter play/open   P play next   a add   F find   p pause   < > prev/next   , . volume   1 Queue  2 Folders   ? keys   q close"), style: (fg: "#B8B8B8")),
             ], align: Center,
         )),
         "state": Pane(Property(
