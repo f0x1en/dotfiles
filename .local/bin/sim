@@ -2,12 +2,13 @@
 """sim: TUI for the phone's SMS, calls, contacts and SIMs over adb (built on phonectl, no app on the phone).
 
 1-4 switch tabs (Messages, Calls, Contacts, SIM), j/k or Up/Down move, Enter or t texts,
-c calls, n new (message, call or contact), a answers, h hangs up, r reloads, q quits.
+c calls, n new (message, call or contact), e edits and d deletes a contact,
+a answers, h hangs up, r reloads, q quits.
 In a prompt: Enter confirms, Esc cancels. Call audio stays on the phone.
 """
 import sys
 sys.dont_write_bytecode = True  # no __pycache__ in ~/.local/bin from loading phonectl
-import curses, importlib.util, locale, os, subprocess, textwrap, time
+import curses, importlib.util, locale, os, subprocess, textwrap, threading, time
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,7 +22,7 @@ _spec.loader.exec_module(p)
 ERRORS = (subprocess.CalledProcessError, ValueError, RuntimeError, TypeError, IndexError, SystemExit)
 TABS = ["Messages", "Calls", "Contacts", "SIM"]
 HELP = {1: "enter/t text  c call  n new message", 2: "c call  t text  n call a number",
-        3: "c call  t text  n new contact", 4: ""}
+        3: "c call  t text  n new  e edit  d delete", 4: ""}
 
 
 def chats(msgs):
@@ -33,14 +34,15 @@ def chats(msgs):
                   key=lambda c: c[2][-1]["received"], reverse=True)
 
 
-def load(S, tab):
+def load(S, tab, fresh=False):
     # shortcut: last 1000 messages and 500 calls only, raise the numbers if old ones go missing
     if tab == 1:
         S.data[1] = chats(p.messages(1000))
     elif tab == 2:
         S.data[2] = p.call_log(500)
     elif tab == 3:
-        p._contacts = None
+        if fresh:
+            p._contacts = None
         S.data[3] = sorted(p.contacts(), key=lambda c: c["name"].lower())
     else:
         S.data[4] = p.sims()
@@ -93,7 +95,7 @@ def draw(scr, S):
         draw_list(scr, S, [f"{c['when'][5:]}  {c['kind']:<8} {c['secs'] // 60:>3}m{c['secs'] % 60:02}s  "
                            f"{p.name_of(c['number'])}".ljust(W) for c in rows])
     elif S.tab == 3:
-        draw_list(scr, S, [f"{c['name'][:30]:<31} {c['number']}".ljust(W) for c in rows])
+        draw_list(scr, S, [f"{c['name'][:30]:<31} {c['number']:<18} {c['src']}".ljust(W) for c in rows])
     else:
         for row, s in enumerate(rows):
             put(scr, 2 * row + 2, 2, f"SIM {s['slot'] + 1}  {s['carrier']}  {s['state']}  {s['net']}  {s['dbm']} dBm"
@@ -105,9 +107,9 @@ def draw(scr, S):
         put(scr, H - 1, 0, f"{S.status + '  ' if S.status else ''}{S.prompt[0]}{S.buf}")
 
 
-def ask(S, label, done):
-    """Open a prompt; done(text) runs on Enter. If done raises, the prompt and its text stay."""
-    S.prompt, S.buf = (label, done), ""
+def ask(S, label, done, text=""):
+    """Open a prompt holding TEXT; done(text) runs on Enter. If done raises, the prompt and its text stay."""
+    S.prompt, S.buf = (label, done), text
 
 
 def text_to(S, number):
@@ -127,12 +129,37 @@ def call(S, number):
 def add(S, name, number):
     p.add_contact(name, number)
     S.status = f"added {name}"
-    load(S, 3)
+    load(S, 3, fresh=True)
+
+
+def edit(S, c):
+    def save(number, name):
+        p.edit_contact(c, name, number)
+        S.status = f"saved {name}"
+        load(S, 3, fresh=True)
+    ask(S, "name: ", lambda name: ask(S, f"{name}'s number: ", lambda num: save(num, name), c["number"]), c["name"])
+
+
+def delete(S, c):
+    def done(answer):
+        if answer.lower() == "y":
+            p.delete_contact(c)
+            S.status = f"deleted {c['name']}"
+            load(S, 3, fresh=True)
+    ask(S, f"delete {c['name']} ({c['number']})? y/n: ", done)
 
 
 def main(scr):
     S = SimpleNamespace(tab=1, sel={1: 0, 2: 0, 3: 0, 4: 0}, data={1: None, 2: None, 3: None, 4: None},
                         prompt=None, buf="", status="")
+
+    def preload():  # the other tabs load in the background, so switching does not wait on adb
+        for t in (3, 2, 4):
+            try:
+                load(S, t)
+            except ERRORS:
+                pass  # the tab loads again when opened
+    threading.Thread(target=preload, daemon=True).start()
     load(S, 1)
     while True:
         draw(scr, S)
@@ -158,14 +185,14 @@ def main(scr):
                 return
             elif k in ("1", "2", "3", "4"):
                 S.tab = int(k)
-                if S.data[S.tab] is None or S.tab == 4:
+                if S.data[S.tab] is None:  # preload not done yet (or failed)
                     load(S, S.tab)
             elif k in ("j", curses.KEY_DOWN):
                 S.sel[S.tab] = max(0, min(S.sel[S.tab] + 1, len(S.data[S.tab] or []) - 1))
             elif k in ("k", curses.KEY_UP):
                 S.sel[S.tab] = max(S.sel[S.tab] - 1, 0)
             elif k == "r":
-                load(S, S.tab)
+                load(S, S.tab, fresh=True)
                 S.status = "reloaded"
             elif k == "a":
                 p.adb("input", "keyevent", "KEYCODE_CALL")
@@ -181,6 +208,10 @@ def main(scr):
                 ask(S, "call (number or name): ", lambda who: call(S, p.resolve(who)))
             elif k == "n" and S.tab == 3:
                 ask(S, "new contact name: ", lambda name: ask(S, f"{name}'s number: ", lambda num: add(S, name, num)))
+            elif k == "e" and S.tab == 3 and S.data[3]:
+                edit(S, S.data[3][S.sel[3]])
+            elif k == "d" and S.tab == 3 and S.data[3]:
+                delete(S, S.data[3][S.sel[3]])
         except ERRORS as e:
             S.status = f"failed: {e}" if str(e) else "phone not reachable (USB, adb)"
 

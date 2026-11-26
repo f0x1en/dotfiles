@@ -9,6 +9,8 @@ phonectl answer              pick up the ringing call
 phonectl hangup              end or decline the call
 phonectl contacts            list phone and SIM contacts
 phonectl add-contact NAME NUMBER   new contact in phone storage
+phonectl edit-contact WHO NAME NUMBER   change name and number (phone or SIM contact)
+phonectl del-contact WHO     delete (phone storage only; SIM: use the phone's Contacts app)
 phonectl calls [N]           last N calls, newest last (default 20)
 phonectl sim                 SIM slots: carrier, state, network, signal, default for sms/voice/data
 phonectl watch               desktop notification for new SMS and incoming calls (runs as phone-watch.service)
@@ -73,10 +75,12 @@ _contacts = None
 def contacts():
     global _contacts
     if _contacts is None:
-        _contacts = [{"name": r["display_name"], "number": r["data1"]}
-                     for r in query("content://com.android.contacts/data/phones", "display_name:data1")]
-        # SIM contacts are not in the contacts provider; icc/adn ignores --projection, so match up to emails
-        _contacts += [{"name": r["name"], "number": r["number"]}
+        # src: "phone" (phone storage, full edit), "sim", or the app that syncs it (read-only here)
+        _contacts = [{"name": r["display_name"], "number": r["data1"], "id": r["raw_contact_id"],
+                      "src": "phone" if r["account_type"] in ("NULL", "vnd.sec.contact.phone") else r["account_type"].split(".")[-1]}
+                     for r in query("content://com.android.contacts/data/phones", "raw_contact_id:account_type:display_name:data1")]
+        # SIM contacts are not in data/phones; icc/adn ignores --projection, so match up to emails
+        _contacts += [{"name": r["name"], "number": r["number"], "src": "sim"}
                       for r in query("content://icc/adn", "name:number:emails") if r["number"]]
     return _contacts
 
@@ -163,6 +167,48 @@ def add_contact(name, number):
     _contacts = None
 
 
+def contact(who):
+    """The one contact whose name contains WHO or whose number matches it."""
+    d = digits(who)
+    hits = [c for c in contacts() if who.lower() in c["name"].lower() or (d and digits(c["number"]) == d)]
+    if len(hits) != 1:
+        sys.exit(f"phonectl: '{who}' matches {len(hits)} contacts: " + ", ".join(f"{c['name']} {c['number']}" for c in hits))
+    return hits[0]
+
+
+def edit_contact(c, name, number):
+    global _contacts
+    if c["src"] == "sim":
+        adb(f"content update --uri content://icc/adn --bind tag:s:{quote(c['name'])} --bind number:s:{quote(c['number'])} "
+            f"--bind newTag:s:{quote(name)} --bind newNumber:s:{quote(number)}")
+        # Samsung's IccProvider reports success even when it writes nothing, so check
+        if not any(r["name"] == name and r["number"] == number for r in query("content://icc/adn", "name:number:emails")):
+            raise RuntimeError("the SIM refused the change; edit it in the phone's Contacts app")
+    elif c["src"] == "phone":
+        rid, old = int(c["id"]), c["number"].replace("'", "''")
+        # clear the split name parts, or the provider keeps showing the old name
+        adb(f"content update --uri content://com.android.contacts/data --bind data1:s:{quote(name)} "
+            + " ".join(f"--bind data{i}:n:" for i in range(2, 7))
+            + " --where " + quote(f"raw_contact_id={rid} AND mimetype='vnd.android.cursor.item/name'"))
+        adb(f"content update --uri content://com.android.contacts/data --bind data1:s:{quote(number)} "
+            + " --where " + quote(f"raw_contact_id={rid} AND data1='{old}'"))
+    else:
+        raise RuntimeError(f"synced by {c['src']}, edit it there")
+    _contacts = None
+
+
+def delete_contact(c):
+    global _contacts
+    if c["src"] == "sim":
+        # Samsung's IccProvider ignores every --where form tried (tag/number, index, efid); SIM delete needs its Contacts app
+        raise RuntimeError("SIM contacts can only be deleted in the phone's Contacts app")
+    if c["src"] != "phone":
+        raise RuntimeError(f"synced by {c['src']}, delete it there")
+    adb(f"content delete --uri {quote('content://com.android.contacts/raw_contacts?caller_is_syncadapter=true')} "
+        f"--where {quote('_id=' + str(int(c['id'])))}")
+    _contacts = None
+
+
 def sims():
     """One dict per SIM slot: sub id, carrier, state, network, LTE/5G signal, default roles."""
     isub = adb("dumpsys isub")
@@ -243,7 +289,9 @@ CMDS = {"sms": sms, "thread": thread, "send": send, "call": call, "watch": watch
         "answer": lambda: adb("input", "keyevent", "KEYCODE_CALL"),
         "hangup": lambda: adb("input", "keyevent", "KEYCODE_ENDCALL"),
         "contacts": lambda: [print(f"{c['name']}: {c['number']}") for c in contacts()],
-        "calls": calls, "sim": sim, "add-contact": lambda name, number: add_contact(name, number)}
+        "calls": calls, "sim": sim, "add-contact": lambda name, number: add_contact(name, number),
+        "edit-contact": lambda who, name, number: edit_contact(contact(who), name, number),
+        "del-contact": lambda who: delete_contact(contact(who))}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
@@ -252,3 +300,5 @@ if __name__ == "__main__":
         CMDS[sys.argv[1]](*sys.argv[2:])
     except TypeError:
         sys.exit(__doc__)
+    except RuntimeError as e:
+        sys.exit(f"phonectl: {e}")
