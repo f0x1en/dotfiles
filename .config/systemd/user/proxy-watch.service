@@ -1,5 +1,5 @@
 [Unit]
-Description=Switch the proxy to the fallback when Bushuray stops working (proxy watch)
+Description=Restart Bushuray when it stops working, then switch to v2rayN (proxy watch)
 
 [Service]
 ExecStart=%h/.local/bin/proxy watch

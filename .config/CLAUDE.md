@@ -19,11 +19,12 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   (`$HOME/.local/opt/bushuray`, GitHub release v0.2.3, not apt), TUI `bushuray`,
   config `$HOME/.config/bushuray/config.json`, data `$HOME/.local/share/bushuray`.
   Never stop it from a Claude session without a detached rollback: Claude's own traffic uses it.
-- Fallback: `proxy use fallback` runs v2rayN's old xray core + last config from
+- Fallback: `proxy v2rayn` runs v2rayN's old xray core + last config from
   `$HOME/.local/share/proxy-fallback` (unit `proxy-fallback`, conflicts with `bushuray`;
-  config.json holds server credentials, not tracked). `proxy-watch` switches to it after
-  3 failed checks and notifies; while on it, it retries Bushuray every 10 min
-  (`proxy retry` does one try by hand; `proxy use bushuray` forces it). `proxy status` checks both ports.
+  config.json holds server credentials, not tracked). `proxy-watch` (only while
+  NetworkManager is connected) restarts Bushuray after 3 failed checks, switches to v2rayN after
+  3 more and notifies, then retries Bushuray every 10 min. A manual `proxy v2rayn` is never undone.
+  `proxy retry` does one try by hand; `proxy bushuray` forces it; `proxy` checks both ports.
 - Use it when a direct
   download hangs or fails: `curl -x http://127.0.0.1:10808 --max-time 120 ...`,
   or `http_proxy=... https_proxy=...` for other tools. Always set a timeout.
