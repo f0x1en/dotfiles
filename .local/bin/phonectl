@@ -149,7 +149,11 @@ def send(who, *text):
 
 
 def dial(number):
-    adb("am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{number}")
+    # straight to Telecom: the plain CALL intent goes to Fossify Phone, which does not place the call
+    out = adb("am", "start", "-n", "com.android.server.telecom/.components.UserCallActivity",
+              "-a", "android.intent.action.CALL", "-d", f"tel:{quote(number)}")
+    if "Error" in out:
+        raise RuntimeError(out.strip())
 
 
 def call(who):
