@@ -8,9 +8,9 @@ phonectl call WHO            dial
 phonectl answer              pick up the ringing call
 phonectl hangup              end or decline the call
 phonectl contacts            list phone and SIM contacts
-phonectl add-contact NAME NUMBER   new contact in phone storage
-phonectl edit-contact WHO NAME NUMBER   change name and number (phone or SIM contact)
-phonectl del-contact WHO     delete (phone storage only; SIM: use the phone's Contacts app)
+phonectl add-contact NAME NUMBER   new contact on the SIM
+phonectl edit-contact WHO NAME NUMBER   change name and number
+phonectl del-contact WHO     delete a contact
 phonectl calls [N]           last N calls, newest last (default 20)
 phonectl sim                 SIM slots: carrier, state, network, signal, default for sms/voice/data
 phonectl watch               desktop notification for new SMS and incoming calls (runs as phone-watch.service)
@@ -80,10 +80,27 @@ def contacts():
                       "src": "phone" if r["account_type"] in ("NULL", "vnd.sec.contact.phone") else r["account_type"].split(".")[-1]}
                      for r in query("content://com.android.contacts/data/phones", "raw_contact_id:account_type:display_name:data1")
                      if r["account_type"] != "vnd.sec.contact.sim"]  # Samsung's copy of SIM contacts; icc/adn below has them all
-        # SIM contacts are not in data/phones; icc/adn ignores --projection, so match up to emails
-        _contacts += [{"name": r["name"], "number": r["number"], "src": "sim"}
-                      for r in query("content://icc/adn", "name:number:emails") if r["number"]]
+        _contacts += [{"name": r["name"], "number": r["number"], "src": "sim", "id": r["adn_index"]}
+                      for r in sim_rows() if r["number"]]
     return _contacts
+
+
+def sim_rows():
+    # icc/adn ignores --projection and always returns these columns, in this order
+    return query("content://icc/adn", "name:number:emails:anrs:_id:anr_number:anrA_number:anrB_number:anrC_number:adn_index")
+
+
+def sim_write(op, binds, index, check):
+    """Write the SIM the way Samsung's Contacts app does (icc/adn/from_contacts, by adn_index), then verify:
+    the provider reports success even when the write failed."""
+    uri = "content://icc/adn/from_contacts"
+    if op == "delete":
+        adb(f"content delete --uri {uri} --where {quote(binds + f' AND adn_index={int(index)}')}")
+    else:
+        adb(f"content {op} --uri {uri} {binds}" + (f" --bind adn_index:i:{int(index)}" if index else ""))
+    if not check(sim_rows()):
+        # seen once: "Have pending update for EF:28474" in logcat blocks every write until the phone restarts
+        raise RuntimeError("the SIM refused the write (restart the phone if this keeps failing)")
 
 
 def name_of(number):
@@ -157,14 +174,10 @@ def calls(n=20):
 
 
 def add_contact(name, number):
-    """New contact in phone storage (not the SIM, not an account)."""
+    """New contact on the SIM (the user keeps contacts only there)."""
     global _contacts
-    adb("content insert --uri content://com.android.contacts/raw_contacts --bind account_type:n: --bind account_name:n:")
-    rid = query("content://com.android.contacts/raw_contacts", "_id", None, "_id DESC LIMIT 1")[0]["_id"]
-    for mime, value in (("name", name), ("phone_v2", number)):
-        adb(f"content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:{int(rid)} "
-            f"--bind mimetype:s:vnd.android.cursor.item/{mime} --bind data1:s:{quote(value)}"
-            + (" --bind data2:i:2" if mime == "phone_v2" else ""))  # data2=2: mobile
+    sim_write("insert", f"--bind tag:s:{quote(name)} --bind number:s:{quote(number)}", None,
+              lambda rows: any(r["name"] == name and r["number"] == number for r in rows))
     _contacts = None
 
 
@@ -180,11 +193,9 @@ def contact(who):
 def edit_contact(c, name, number):
     global _contacts
     if c["src"] == "sim":
-        adb(f"content update --uri content://icc/adn --bind tag:s:{quote(c['name'])} --bind number:s:{quote(c['number'])} "
-            f"--bind newTag:s:{quote(name)} --bind newNumber:s:{quote(number)}")
-        # Samsung's IccProvider reports success even when it writes nothing, so check
-        if not any(r["name"] == name and r["number"] == number for r in query("content://icc/adn", "name:number:emails")):
-            raise RuntimeError("the SIM refused the change; edit it in the phone's Contacts app")
+        sim_write("update", f"--bind tag:s:{quote(c['name'])} --bind number:s:{quote(c['number'])} "
+                            f"--bind newTag:s:{quote(name)} --bind newNumber:s:{quote(number)}", c["id"],
+                  lambda rows: any(r["adn_index"] == c["id"] and r["name"] == name and r["number"] == number for r in rows))
     elif c["src"] == "phone":
         rid, old = int(c["id"]), c["number"].replace("'", "''")
         # clear the split name parts, or the provider keeps showing the old name
@@ -201,8 +212,11 @@ def edit_contact(c, name, number):
 def delete_contact(c):
     global _contacts
     if c["src"] == "sim":
-        # Samsung's IccProvider ignores every --where form tried (tag/number, index, efid); SIM delete needs its Contacts app
-        raise RuntimeError("SIM contacts can only be deleted in the phone's Contacts app")
+        # shortcut: the provider splits --where on " AND ", so a name containing " AND " cannot be deleted here
+        sim_write("delete", f"tag={c['name']} AND number={c['number']}", c["id"],
+                  lambda rows: not any(r["adn_index"] == c["id"] for r in rows))
+        _contacts = None
+        return
     if c["src"] != "phone":
         raise RuntimeError(f"synced by {c['src']}, delete it there")
     adb(f"content delete --uri {quote('content://com.android.contacts/raw_contacts?caller_is_syncadapter=true')} "
