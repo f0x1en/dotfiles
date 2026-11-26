@@ -74,7 +74,8 @@ KEYS = """\
 Enter      play the song (queues its folder) / open folder
 P          play this song next, now (queue stays)
 a          add selected song or folder to the end of the queue
-D          remove from queue (Queue tab)
+d          remove selected song from queue (Queue tab)
+D          clear the whole queue (Queue tab)
 F          find a song by any word
 /          search the list on screen (n = next match)
 p          pause / play
