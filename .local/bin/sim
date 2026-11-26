@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""sim: TUI for the phone's SMS, calls, contacts and SIMs over adb (built on phonectl, no app on the phone).
+
+1-4 switch tabs (Messages, Calls, Contacts, SIM), j/k or Up/Down move, Enter or t texts,
+c calls, n new (message, call or contact), a answers, h hangs up, r reloads, q quits.
+In a prompt: Enter confirms, Esc cancels. Call audio stays on the phone.
+"""
+import sys
+sys.dont_write_bytecode = True  # no __pycache__ in ~/.local/bin from loading phonectl
+import curses, importlib.util, locale, os, subprocess, textwrap, time
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+from types import SimpleNamespace
+
+_path = str(Path(__file__).resolve().with_name("phonectl"))
+_spec = importlib.util.spec_from_loader("phonectl", SourceFileLoader("phonectl", _path))
+p = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(p)
+
+# adb gone, text too long, isms refused, dumpsys without the expected line, name matches 0 or 2+ contacts
+ERRORS = (subprocess.CalledProcessError, ValueError, RuntimeError, TypeError, IndexError, SystemExit)
+TABS = ["Messages", "Calls", "Contacts", "SIM"]
+HELP = {1: "enter/t text  c call  n new message", 2: "c call  t text  n call a number",
+        3: "c call  t text  n new contact", 4: ""}
+
+
+def chats(msgs):
+    """[(threadid, number, msgs oldest first)], newest chat first."""
+    by = {}
+    for m in sorted(msgs, key=lambda m: m["received"]):
+        by.setdefault(m["threadid"], []).append(m)
+    return sorted(((t, ms[-1]["number"], ms) for t, ms in by.items()),
+                  key=lambda c: c[2][-1]["received"], reverse=True)
+
+
+def load(S, tab):
+    # shortcut: last 1000 messages and 500 calls only, raise the numbers if old ones go missing
+    if tab == 1:
+        S.data[1] = chats(p.messages(1000))
+    elif tab == 2:
+        S.data[2] = p.call_log(500)
+    elif tab == 3:
+        p._contacts = None
+        S.data[3] = sorted(p.contacts(), key=lambda c: c["name"].lower())
+    else:
+        S.data[4] = p.sims()
+    S.sel[tab] = min(S.sel[tab], max(0, len(S.data[tab]) - 1))
+
+
+def number_at(S):
+    rows, i = S.data[S.tab] or [], S.sel[S.tab]
+    if S.tab == 4 or not rows:
+        return None
+    return rows[i][1] if S.tab == 1 else rows[i]["number"]
+
+
+def put(scr, y, x, s, attr=0):
+    try:
+        scr.addnstr(y, x, s, max(0, scr.getmaxyx()[1] - x), attr)
+    except curses.error:
+        pass  # writing the bottom-right cell raises, the text is still drawn
+
+
+def draw_list(scr, S, lines):
+    H = scr.getmaxyx()[0] - 2
+    sel = S.sel[S.tab]
+    top = max(0, sel - (H - 1))
+    for row, l in enumerate(lines[top:top + H]):
+        put(scr, row + 1, 0, l, curses.A_REVERSE if top + row == sel else 0)
+
+
+def draw(scr, S):
+    scr.erase()
+    H, W = scr.getmaxyx()
+    x = 0
+    for i, name in enumerate(TABS, 1):
+        put(scr, 0, x, f" {i} {name} ", curses.A_REVERSE if i == S.tab else curses.A_DIM)
+        x += len(name) + 5
+    rows = S.data[S.tab] or []
+    if S.tab == 1:
+        L = min(24, W // 3)
+        draw_list(scr, S, [p.name_of(num)[:L - 1].ljust(L - 1) for _, num, _ in rows])
+        scr.vline(1, L, curses.ACS_VLINE, H - 2)
+        lines, w = [], W - L - 3
+        for m in rows[S.sel[1]][2] if rows else []:
+            head = f"{m['received'][5:16]} {'<' if m['type'] == 'inbox' else '>'} "
+            body = [l for para in m["body"].splitlines() for l in textwrap.wrap(para, max(10, w - len(head)))]
+            for j, l in enumerate(body or [""]):
+                lines.append((head if j == 0 else " " * len(head)) + l)
+        for row, l in enumerate(lines[-(H - 2):]):  # shortcut: newest lines only; phonectl thread WHO 200 for more
+            put(scr, row + 1, L + 2, l)
+    elif S.tab == 2:
+        draw_list(scr, S, [f"{c['when'][5:]}  {c['kind']:<8} {c['secs'] // 60:>3}m{c['secs'] % 60:02}s  "
+                           f"{p.name_of(c['number'])}".ljust(W) for c in rows])
+    elif S.tab == 3:
+        draw_list(scr, S, [f"{c['name'][:30]:<31} {c['number']}".ljust(W) for c in rows])
+    else:
+        for row, s in enumerate(rows):
+            put(scr, 2 * row + 2, 2, f"SIM {s['slot'] + 1}  {s['carrier']}  {s['state']}  {s['net']}  {s['dbm']} dBm"
+                                     f"  default for: {', '.join(s['roles']) or '-'}")
+    curses.curs_set(0 if S.prompt is None else 1)
+    if S.prompt is None:
+        put(scr, H - 1, 0, S.status or f"{HELP[S.tab]}  a answer  h hang up  r reload  q quit".lstrip(), curses.A_DIM)
+    else:
+        put(scr, H - 1, 0, f"{S.status + '  ' if S.status else ''}{S.prompt[0]}{S.buf}")
+
+
+def ask(S, label, done):
+    """Open a prompt; done(text) runs on Enter. If done raises, the prompt and its text stay."""
+    S.prompt, S.buf = (label, done), ""
+
+
+def text_to(S, number):
+    def send(body):
+        p.send_sms(number, body)
+        S.status = f"sent to {p.name_of(number)}"
+        time.sleep(1)  # the phone needs a moment to list the sent message
+        load(S, 1)
+    ask(S, f"to {p.name_of(number)}: ", send)
+
+
+def call(S, number):
+    p.dial(number)
+    S.status = f"calling {p.name_of(number)}"
+
+
+def add(S, name, number):
+    p.add_contact(name, number)
+    S.status = f"added {name}"
+    load(S, 3)
+
+
+def main(scr):
+    S = SimpleNamespace(tab=1, sel={1: 0, 2: 0, 3: 0, 4: 0}, data={1: None, 2: None, 3: None, 4: None},
+                        prompt=None, buf="", status="")
+    load(S, 1)
+    while True:
+        draw(scr, S)
+        k = scr.get_wch()
+        S.status = ""
+        try:
+            if S.prompt is not None:
+                if k == "\x1b":
+                    S.prompt = None
+                elif k in ("\n", curses.KEY_ENTER):
+                    prompt, buf = S.prompt, S.buf
+                    S.prompt = None
+                    if buf.strip():
+                        try:
+                            prompt[1](buf.strip())
+                        except ERRORS as e:
+                            S.prompt, S.buf, S.status = prompt, buf, f"failed: {e}"
+                elif k in (curses.KEY_BACKSPACE, "\x7f", "\b"):
+                    S.buf = S.buf[:-1]
+                elif isinstance(k, str) and k.isprintable():
+                    S.buf += k
+            elif k == "q":
+                return
+            elif k in ("1", "2", "3", "4"):
+                S.tab = int(k)
+                if S.data[S.tab] is None or S.tab == 4:
+                    load(S, S.tab)
+            elif k in ("j", curses.KEY_DOWN):
+                S.sel[S.tab] = max(0, min(S.sel[S.tab] + 1, len(S.data[S.tab] or []) - 1))
+            elif k in ("k", curses.KEY_UP):
+                S.sel[S.tab] = max(S.sel[S.tab] - 1, 0)
+            elif k == "r":
+                load(S, S.tab)
+                S.status = "reloaded"
+            elif k == "a":
+                p.adb("input", "keyevent", "KEYCODE_CALL")
+            elif k == "h":
+                p.adb("input", "keyevent", "KEYCODE_ENDCALL")
+            elif k in ("t", "\n", curses.KEY_ENTER) and number_at(S):
+                text_to(S, number_at(S))
+            elif k == "c" and number_at(S):
+                call(S, number_at(S))
+            elif k == "n" and S.tab == 1:
+                ask(S, "text to (number or name): ", lambda who: text_to(S, p.resolve(who)))
+            elif k == "n" and S.tab == 2:
+                ask(S, "call (number or name): ", lambda who: call(S, p.resolve(who)))
+            elif k == "n" and S.tab == 3:
+                ask(S, "new contact name: ", lambda name: ask(S, f"{name}'s number: ", lambda num: add(S, name, num)))
+        except ERRORS as e:
+            S.status = f"failed: {e}" if str(e) else "phone not reachable (USB, adb)"
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["test"]:
+        m = lambda t, r, n: {"threadid": t, "received": r, "number": n, "body": "x", "type": "inbox"}
+        cs = chats([m(1, "2026-01-01", "a"), m(2, "2026-01-03", "b"), m(1, "2026-01-02", "a")])
+        assert [c[0] for c in cs] == [2, 1] and [x["received"] for x in cs[1][2]] == ["2026-01-01", "2026-01-02"]
+        S = SimpleNamespace(tab=2, sel={2: 0}, data={2: [{"number": "+1"}]})
+        assert number_at(S) == "+1"
+        sys.exit(print("ok"))
+    if sys.argv[1:]:
+        sys.exit(__doc__)
+    locale.setlocale(locale.LC_ALL, "")
+    os.environ.setdefault("ESCDELAY", "25")
+    try:
+        curses.wrapper(main)
+    except ERRORS:
+        sys.exit("sim: phone not reachable (USB cable, USB debugging, adb)")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""phonectl: SMS and calls of the USB-connected Android phone, over adb (needs Termux + Termux:API on the phone).
+"""phonectl: SMS and calls of the USB-connected Android phone, over adb only (no app on the phone).
 
 phonectl sms [N]             last N messages, newest last (default 20)
 phonectl thread WHO [N]      last N messages with one contact or number
@@ -7,26 +7,56 @@ phonectl send WHO TEXT...    send an SMS
 phonectl call WHO            dial
 phonectl answer              pick up the ringing call
 phonectl hangup              end or decline the call
-phonectl contacts            list phone contacts
+phonectl contacts            list phone and SIM contacts
+phonectl add-contact NAME NUMBER   new contact in phone storage
+phonectl calls [N]           last N calls, newest last (default 20)
+phonectl sim                 SIM slots: carrier, state, network, signal, default for sms/voice/data
 phonectl watch               desktop notification for new SMS and incoming calls (runs as phone-watch.service)
 
 WHO is a number or part of a contact name.
 """
-import json, re, subprocess, sys, threading, time
-
-T = "/data/data/com.termux/files"
-TERMUX_ENV = (f"export PREFIX={T}/usr HOME={T}/home PATH={T}/usr/bin "
-              f"LD_PRELOAD={T}/usr/lib/libtermux-exec.so;")
+import re, subprocess, sys, threading, time
 
 
 def adb(*args, check=True):
     return subprocess.run(["adb", "shell", *args], capture_output=True, text=True, check=check).stdout
 
 
-def termux(cmd):
-    """Run a command inside Termux (run-as works because the GitHub build is debuggable)."""
-    out = adb(f"run-as com.termux {T}/usr/bin/bash -c {quote(TERMUX_ENV + cmd)}")
-    return json.loads(out) if out.strip() else None
+def query(uri, projection, where=None, sort=None):
+    """Rows of an Android content provider as dicts. The last column may hold commas and newlines."""
+    cmd = f"content query --uri {uri} --projection {projection}"
+    if where:
+        cmd += f" --where {quote(where)}"
+    if sort:
+        cmd += f" --sort {quote(sort)}"
+    cols = projection.split(":")
+    row = re.compile(", ".join([f"{c}=(.*?)" for c in cols[:-1]] + [f"{cols[-1]}=(.*)"]), re.S)
+    return [dict(zip(cols, m.groups())) for r in re.split(r"(?m)^Row: \d+ ", adb(cmd))[1:]
+            if (m := row.match(r.rstrip("\n")))]
+
+
+def messages(n, where=None):
+    """Last N SMS, in the shape show() and the sms TUI use."""
+    return [{"threadid": int(r["thread_id"]), "number": r["address"], "body": r["body"],
+             "received": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(r["date"]) / 1000)),
+             "type": "inbox" if r["type"] == "1" else "sent"}
+            for r in query("content://sms", "_id:thread_id:address:date:type:body", where, f"date DESC LIMIT {int(n)}")]
+
+
+def send_sms(number, text):
+    """Send through the phone's own SMS service as the adb shell user, which holds SEND_SMS."""
+    # shortcut: one SMS part only; longer text needs ISms.sendMultipartTextForSubscriber
+    limit = 160 if text.isascii() and not set(text) & set("[]{}\\^~|`") else 70
+    if len(text) > limit:
+        raise ValueError(f"text is {len(text)} chars, one SMS holds {limit}")
+    sub = re.search(r"defaultSmsSubId=(\d+)", adb("dumpsys isub"))[1]
+    # Android 13 ISms transaction 5 = sendTextForSubscriber(subId, pkg, attributionTag, dest, scAddr, text,
+    # sentIntent, deliveryIntent, persist, messageId). Null string = i32 -1, null intent = i32 0.
+    # persist=1 stores it in Sent, as the shell is not the default SMS app.
+    out = adb(f"service call isms 5 i32 {sub} s16 com.android.shell i32 -1 s16 {quote(number)} i32 -1 "
+              f"s16 {quote(text)} i32 0 i32 0 i32 1 i64 0")
+    if "Parcel(00000000" not in out:
+        raise RuntimeError(f"isms refused: {out.strip()}")
 
 
 def quote(s):
@@ -43,7 +73,11 @@ _contacts = None
 def contacts():
     global _contacts
     if _contacts is None:
-        _contacts = termux("termux-contact-list") or []
+        _contacts = [{"name": r["display_name"], "number": r["data1"]}
+                     for r in query("content://com.android.contacts/data/phones", "display_name:data1")]
+        # SIM contacts are not in the contacts provider; icc/adn ignores --projection, so match up to emails
+        _contacts += [{"name": r["name"], "number": r["number"]}
+                      for r in query("content://icc/adn", "name:number:emails") if r["number"]]
     return _contacts
 
 
@@ -72,26 +106,83 @@ def show(msgs):
 
 
 def sms(n=20):
-    show(termux(f"termux-sms-list -l {int(n)} -t all"))
+    show(messages(n))
 
 
 def thread(who, n=20):
     number = resolve(who)
-    show(termux(f"termux-sms-list -l {int(n)} -t all -f {quote(number)}"))
+    d = digits(number)  # empty for a sender name like a bank's: then match it exactly
+    show(messages(n, f"address LIKE '%{d}'" if d else "address = '" + number.replace("'", "''") + "'"))
 
 
 def send(who, *text):
     if not text:
         sys.exit("phonectl: no text")
     number = resolve(who)
-    termux(f"termux-sms-send -n {quote(number)} {quote(' '.join(text))}")
+    try:
+        send_sms(number, " ".join(text))
+    except (ValueError, RuntimeError) as e:
+        sys.exit(f"phonectl: not sent: {e}")
     print(f"sent to {name_of(number)} ({number})")
+
+
+def dial(number):
+    adb("am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{number}")
 
 
 def call(who):
     number = resolve(who)
-    adb("am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{number}")
+    dial(number)
     print(f"calling {name_of(number)} ({number})")
+
+
+KINDS = {"1": "in", "2": "out", "3": "missed", "4": "voicemail", "5": "rejected", "6": "blocked"}
+
+
+def call_log(n):
+    """Last N calls, newest first."""
+    return [{"when": time.strftime("%Y-%m-%d %H:%M", time.localtime(int(r["date"]) / 1000)),
+             "secs": int(r["duration"]), "kind": KINDS.get(r["type"], r["type"]), "number": r["number"]}
+            for r in query("content://call_log/calls", "date:duration:type:number", None, f"date DESC LIMIT {int(n)}")]
+
+
+def calls(n=20):
+    for c in reversed(call_log(n)):
+        print(f"{c['when']} {c['kind']:<8} {c['secs'] // 60:>3}m{c['secs'] % 60:02}s {name_of(c['number'])}")
+
+
+def add_contact(name, number):
+    """New contact in phone storage (not the SIM, not an account)."""
+    global _contacts
+    adb("content insert --uri content://com.android.contacts/raw_contacts --bind account_type:n: --bind account_name:n:")
+    rid = query("content://com.android.contacts/raw_contacts", "_id", None, "_id DESC LIMIT 1")[0]["_id"]
+    for mime, value in (("name", name), ("phone_v2", number)):
+        adb(f"content insert --uri content://com.android.contacts/data --bind raw_contact_id:i:{int(rid)} "
+            f"--bind mimetype:s:vnd.android.cursor.item/{mime} --bind data1:s:{quote(value)}"
+            + (" --bind data2:i:2" if mime == "phone_v2" else ""))  # data2=2: mobile
+    _contacts = None
+
+
+def sims():
+    """One dict per SIM slot: sub id, carrier, state, network, LTE/5G signal, default roles."""
+    isub = adb("dumpsys isub")
+    slot_sub = {int(slot): sub for sub, slot in re.findall(r"\{id=(\d+) iccId=\S+ simSlotIndex=(\d+)", isub)}
+    roles = {role: re.search(rf"default{role.title()}SubId=(\d+)", isub) for role in ("sms", "voice", "data")}
+    prop = lambda k: adb("getprop", k).strip().split(",")
+    carrier, state, net = prop("gsm.operator.alpha"), prop("gsm.sim.state"), prop("gsm.network.type")
+    # shortcut: one mSignalStrength line per slot, in slot order; LTE/NR only, other tech shows "?"
+    sig = [re.search(r"(?:ss)?[rR]srp=(-\d+)", l) for l in re.findall(r"mSignalStrength=.*", adb("dumpsys telephony.registry"))]
+    pick = lambda xs, i: xs[i] if i < len(xs) else "?"
+    return [{"slot": i, "sub": sub, "carrier": pick(carrier, i), "state": pick(state, i), "net": pick(net, i),
+             "dbm": (s[1] if (s := pick(sig, i)) and s != "?" else "?"),
+             "roles": [r for r, m in roles.items() if m and m[1] == sub]}
+            for i, sub in sorted(slot_sub.items())]
+
+
+def sim():
+    for s in sims():
+        print(f"SIM {s['slot'] + 1} (sub {s['sub']}): {s['carrier']} {s['state']} {s['net']} {s['dbm']} dBm"
+              f"  default for: {', '.join(s['roles']) or '-'}")
 
 
 def notify(title, body, actions=()):
@@ -151,7 +242,8 @@ def watch():
 CMDS = {"sms": sms, "thread": thread, "send": send, "call": call, "watch": watch,
         "answer": lambda: adb("input", "keyevent", "KEYCODE_CALL"),
         "hangup": lambda: adb("input", "keyevent", "KEYCODE_ENDCALL"),
-        "contacts": lambda: [print(f"{c['name']}: {c['number']}") for c in contacts()]}
+        "contacts": lambda: [print(f"{c['name']}: {c['number']}") for c in contacts()],
+        "calls": calls, "sim": sim, "add-contact": lambda name, number: add_contact(name, number)}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
