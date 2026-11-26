@@ -102,6 +102,7 @@
             "n":          NextResult,
             "N":          PreviousResult,
             "a":          Add,
+            "P":          AddOptions(kind: Action(all: false, autoplay: Hovered, position: AfterCurrentSong)),
             "A":          AddAll,
             "D":          Delete,
             "<C-r>":      Rename,
