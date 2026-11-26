@@ -24,7 +24,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
   config.json holds server credentials, not tracked). `proxy-watch` (only while
   NetworkManager is connected) restarts Bushuray after 3 failed checks, switches to v2rayN after
   3 more and notifies, then retries Bushuray every 10 min. A manual `proxy v2rayn` is never undone.
-  `proxy retry` does one try by hand; `proxy bushuray` forces it; `proxy` checks both ports.
+  `proxy retry` does one try by hand; `proxy bushuray` forces it; `proxy` checks 10808.
 - Use it when a direct
   download hangs or fails: `curl -x http://127.0.0.1:10808 --max-time 120 ...`,
   or `http_proxy=... https_proxy=...` for other tools. Always set a timeout.

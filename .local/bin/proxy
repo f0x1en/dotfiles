@@ -1,106 +1,72 @@
 #!/bin/sh
-# proxy: which engine serves 127.0.0.1:10808 (SOCKS/mixed) and :10809 (HTTP).
-#
-# proxy                   engine in use and a live check of both ports
-# proxy bushuray          switch to Bushuray (TUI: bushuray)
-# proxy v2rayn            switch to v2rayN's xray core with its last config (~/.local/share/proxy-fallback)
-# proxy retry             try Bushuray again; if it fails, go back to v2rayN
-# proxy watch             runs as proxy-watch.service, every 20 s while the network is up:
-#                         Bushuray fails 3 checks: restart it; 3 more: switch to v2rayN and notify.
-#                         After such an automatic switch, retry Bushuray every 10 min.
-#
-# The last choice is kept across reboots. Each engine reconnects to its last server.
-# Switching drops the proxy for a few seconds.
+# proxy             engine in use and a check of 127.0.0.1:10808
+# proxy bushuray    switch to Bushuray (kept across reboots)
+# proxy v2rayn      switch to v2rayN's last config (kept across reboots)
+# proxy retry       try Bushuray, else back to v2rayN
+# proxy watch       proxy-watch.service: while online, restart Bushuray after 3 failed checks,
+#                   switch to v2rayN after 3 more, then retry Bushuray every 10 min
 
-# exists while v2rayN runs because watch switched to it (not the user)
-AUTO="${XDG_STATE_HOME:-$HOME/.local/state}/proxy-auto"
+AUTO=$HOME/.local/state/proxy-auto # exists when watch, not the user, switched to v2rayN
 
-check() { # $1 = proxy URL; true when a request through it works
-    curl -s -o /dev/null -m 10 --noproxy '' -x "$1" -w '%{http_code}' https://www.gstatic.com/generate_204 | grep -q 204
-}
-
-online() { # true when NetworkManager has a network with a route out
-    command -v nmcli >/dev/null || return 0
-    case "$(nmcli -t -f STATE general 2>/dev/null)" in
-        connected | "connected (site only)") return 0 ;;
-        *) return 1 ;;
-    esac
+ok() { # $1 = proxy URL
+    curl -s -o /dev/null -m 10 --noproxy '' -x "${1:-socks5h://127.0.0.1:10808}" \
+        -w '%{http_code}' https://www.gstatic.com/generate_204 | grep -q 204
 }
 
 engine() {
-    if systemctl --user -q is-active bushuray.service; then echo bushuray
-    elif systemctl --user -q is-active proxy-fallback.service; then echo v2rayn
+    if systemctl --user -q is-active bushuray; then echo bushuray
+    elif systemctl --user -q is-active proxy-fallback; then echo v2rayn
     else echo none; fi
-}
-
-use() { # $1 = bushuray | v2rayn
-    case "$1" in
-        bushuray) on=bushuray.service off=proxy-fallback.service ;;
-        v2rayn | fallback) on=proxy-fallback.service off=bushuray.service ;;
-        *) echo "usage: proxy bushuray|v2rayn" >&2; exit 2 ;;
-    esac
-    rm -f "$AUTO"
-    systemctl --user disable -q "$off"
-    systemctl --user enable -q "$on"
-    systemctl --user start "$on" # Conflicts= stops the other one first
-    i=0
-    while [ $i -lt 20 ]; do check http://127.0.0.1:10808 && break; sleep 1; i=$((i + 1)); done
-    status
 }
 
 status() {
     echo "engine: $(engine)"
-    for p in socks5h://127.0.0.1:10808 http://127.0.0.1:10808 http://127.0.0.1:10809; do
-        if check "$p"; then echo "  ok   $p"; else echo "  FAIL $p"; fi
+    for p in socks5h http; do
+        if ok $p://127.0.0.1:10808; then echo "  ok   $p"; else echo "  FAIL $p"; fi
     done
 }
 
-retry() { # true when Bushuray works again
-    use bushuray >/dev/null
-    if check socks5h://127.0.0.1:10808; then status; return 0; fi
-    echo "Bushuray still fails, back to v2rayN"
-    use v2rayn
-    return 1
+use() { # $1 = bushuray | v2rayn
+    on=bushuray off=proxy-fallback
+    [ "$1" = v2rayn ] && on=proxy-fallback off=bushuray
+    systemctl --user disable -q $off
+    systemctl --user enable -q --now $on # Conflicts= stops the other one
+    i=0
+    while [ $i -lt 20 ] && ! ok; do sleep 1; i=$((i + 1)); done
 }
+
+retry() { use bushuray; ok || { use v2rayn; return 1; }; }
 
 watch() {
     sleep 60 # at login the network is not up yet
-    fails=0 waited=0
-    while :; do
-        if ! online; then # no network: no engine can work, so count nothing
-            fails=0
-        elif [ "$(engine)" = bushuray ]; then
-            waited=0
-            if check socks5h://127.0.0.1:10808; then fails=0; else fails=$((fails + 1)); fi
-            if [ $fails -eq 3 ]; then
-                systemctl --user restart bushuray.service
-            elif [ $fails -ge 6 ]; then
-                use v2rayn >/dev/null
-                mkdir -p "${AUTO%/*}" && touch "$AUTO"
-                notify-send -a proxy -u critical "Proxy switched to v2rayN" \
-                    "Bushuray failed after a restart. Retry every 10 min. Now: proxy retry"
-                fails=0
-            fi
-        elif [ "$(engine)" = v2rayn ] && [ -e "$AUTO" ]; then
-            waited=$((waited + 20))
-            if [ $waited -ge 600 ]; then
-                waited=0
-                if retry >/dev/null; then
-                    notify-send -a proxy "Proxy back on Bushuray" "Retry worked."
-                else
-                    mkdir -p "${AUTO%/*}" && touch "$AUTO" # retry's use() cleared it
-                fi
-            fi
-        fi
-        sleep 20
+    f=0 t=0  # failed checks on Bushuray, ticks on v2rayN
+    while sleep 20; do
+        nmcli -t -f STATE general | grep -qx 'connected\|connected (site only)' || { f=0; continue; }
+        case $(engine) in
+        bushuray)
+            t=0
+            if ok; then f=0; else f=$((f + 1)); fi
+            [ $f = 3 ] && systemctl --user restart bushuray
+            if [ $f = 6 ]; then
+                f=0
+                use v2rayn && touch "$AUTO"
+                notify-send -a proxy -u critical "Proxy on v2rayN" "Bushuray failed after a restart. Retry every 10 min."
+            fi ;;
+        v2rayn)
+            f=0
+            [ -e "$AUTO" ] || continue
+            t=$((t + 1))
+            [ $t -ge 30 ] || continue
+            t=0
+            retry && rm -f "$AUTO" && notify-send -a proxy "Proxy back on Bushuray" ;;
+        esac
     done
 }
 
 case "$1" in
-    status | "") status ;;
-    bushuray | v2rayn) use "$1" ;;
-    use) use "$2" ;;
-    retry) retry ;;
-    watch) watch ;;
-    *) sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+"") status ;;
+bushuray | v2rayn) rm -f "$AUTO"; use "$1"; status ;;
+retry) rm -f "$AUTO"; retry; status ;;
+watch) watch ;;
+*) sed -n '2,7p' "$0" | cut -c3-; exit 2 ;;
 esac
