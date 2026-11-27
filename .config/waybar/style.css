@@ -30,14 +30,22 @@ window#waybar {
     border-left: none;
 }
 
-#tray, #network, #bluetooth, #custom-proxy, #pulseaudio, #backlight,
+#custom-dota, #tray, #network, #bluetooth, #custom-proxy, #pulseaudio, #backlight,
 #battery, #language, #clock {
     padding: 0 7px;
     color: #B8B8B8;
 }
 
-#tray, #language {
+#tray, #language, #custom-dota {
     padding: 0 14px;
+}
+
+#custom-dota.off {
+    color: #5A5A5A;
+}
+
+#custom-dota.armed {
+    color: #D4D4D4;
 }
 
 /* Workspaces: every button has the same box; only color and the underline change */

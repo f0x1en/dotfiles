@@ -1,23 +1,27 @@
 #!/usr/bin/python3 -I
-"""dota-accept: click Dota 2's green ACCEPT button once, when a match is found.
+"""dota-accept: accept every Dota 2 match popup until the match really starts.
 
-  dota-accept          arm it in the background (run it when you start searching)
-  dota-accept off      disarm
-  dota-accept status   armed or not
+  dota-accept          toggle: arm if off, disarm if armed (also: click the bar icon)
+  dota-accept on|off|status
+  dota-accept bar      JSON for the waybar module (shown only while Dota runs)
   dota-accept --test FILE.png [SCALE...]   run the detector on a screenshot
 
-While armed: if Dota's window turns urgent (match found while you are
-elsewhere), switch to it. While Dota is visible, grab its whole window twice
-a second (grim) and look for the ACCEPT button, comparing against a cut-out of
-the real one at the window's scale (fullscreen, tiled or floating, any size).
-On a hit: click it with sway's seat cursor, check that the button is gone
-(clicks again, up to 5 times, if not),
-notify, save the frame to ~/.local/state/dota-accept/, and disarm.
-Also disarms when Dota exits.
+While armed:
+- If Dota's window turns urgent (match found while you are elsewhere), switch to it.
+- While Dota is visible, grab its whole window 4 times a second (grim) and look
+  for the ACCEPT button: normalized correlation against a cut-out of the real
+  one, tried at the window's scale (fullscreen, tiled or floating, any size).
+- On a hit: click it with sway's seat cursor, check the button is gone (clicks
+  again, up to 5 times, if not), notify, save the frame to ~/.local/state/dota-accept/.
+- Stays armed after accepting: if someone declines you are back in queue and the
+  next popup is accepted too. Disarms when the match starts (hero selection,
+  reported by Dota's Game State Integration on 127.0.0.1:3291; needs the Dota
+  launch option -gamestateintegration), when Dota exits, or on `dota-accept off`.
 
-Never reads or touches the game: screenshots in, one mouse click out.
+Never reads or touches the game: screenshots in, mouse clicks out.
 """
-import io, json, os, subprocess, sys, time
+import io, json, os, subprocess, sys, threading, time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
@@ -25,6 +29,8 @@ from PIL import Image
 STATE = os.path.expanduser("~/.local/state/dota-accept")
 TEMPLATE = os.path.expanduser("~/.local/share/dota-accept/accept.png")  # cut from a 1920x1080 screenshot
 MATCH = 0.8               # correlation needed to click
+POLL = 0.25               # seconds between checks while armed
+GSI_PORT = 3291
 
 
 def sh(*cmd):
@@ -103,7 +109,7 @@ def visible(tree, win):
 
 
 def tick():
-    """One check. Returns True after a click."""
+    """One check. Returns True after an accepted popup (button gone)."""
     tree = json.loads(sh("swaymsg", "-t", "get_tree"))
     win = dota_window(tree)
     if not win:
@@ -112,14 +118,14 @@ def tick():
         if not win.get("urgent"):
             return False
         sh("swaymsg", f"[con_id={win['id']}] focus")
-        time.sleep(0.7)
+        time.sleep(0.5)
         win = dota_window(json.loads(sh("swaymsg", "-t", "get_tree"))) or win
     # Dota's picture on screen: container rect plus the window's offset in it.
+    # Dota fits its 1920x1080 UI by height or by width.
     r, wr = win["rect"], win["window_rect"]
-    dx, dy, dw, dh = r["x"] + wr["x"], r["y"] + wr["y"], wr["width"], wr["height"]
-    # Whole window. Dota fits its 1920x1080 UI by height or by width.
-    x0, y0, w, h = dx, dy, dw, dh
-    scales = [b * k for b in (dh / 1080, dw / 1920) for k in (0.95, 1.0, 1.05)]
+    x0, y0, w, h = r["x"] + wr["x"], r["y"] + wr["y"], wr["width"], wr["height"]
+    scales = [b * k for b in (h / 1080, w / 1920) for k in (0.95, 0.975, 1.0, 1.025, 1.05)]
+
     def grab():
         png = subprocess.run(["grim", "-g", f"{x0},{y0} {w}x{h}", "-"], capture_output=True).stdout
         if not png:
@@ -151,51 +157,100 @@ def tick():
     return False  # still showing after 5 clicks; stay armed and keep trying
 
 
+def gsi(started):
+    """Listen for Dota's Game State Integration; set `started` once a match runs."""
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            self.send_response(200); self.end_headers()
+            try:
+                state = (json.loads(body).get("map") or {}).get("game_state", "")
+            except ValueError:
+                return
+            if state and state != "DOTA_GAMERULES_STATE_INIT":
+                started.set()
+
+        def log_message(self, *a):
+            pass
+    try:
+        HTTPServer(("127.0.0.1", GSI_PORT), H).serve_forever()
+    except OSError as e:
+        print("dota-accept: GSI listener:", e, file=sys.stderr)
+
+
 def notify(msg):
     sh("notify-send", "-a", "dota-accept", "Dota auto-accept", msg)
+    subprocess.run(["pkill", "-RTMIN+9", "-x", "waybar"])
 
 
 def running():
     return subprocess.run(["pgrep", "-f", "dota-accept run$"], capture_output=True).returncode == 0
 
 
+def dota_running():
+    return subprocess.run(["pgrep", "-x", "dota2"], capture_output=True).returncode == 0
+
+
 def run():
+    started = threading.Event()
+    threading.Thread(target=gsi, args=(started,), daemon=True).start()
+    accepted = 0
     while True:
-        if subprocess.run(["pgrep", "-x", "dota2"], capture_output=True).returncode:
+        if not dota_running():
             notify("Dota closed: disarmed")
+            return
+        if started.is_set():
+            notify("Match started: disarmed")
             return
         try:
             if tick():
-                notify("Match accepted: disarmed")
-                return
+                accepted += 1
+                notify(f"Accepted (popup {accepted}). Stays armed until the match starts.")
         except Exception as e:  # keep running; sway may be mid-reload
             print("dota-accept:", e, file=sys.stderr)
-        time.sleep(0.5)
+        time.sleep(POLL)
+
+
+def arm():
+    if running():
+        print("already armed"); return
+    if not dota_running():
+        print("Dota is not running"); sys.exit(1)
+    os.makedirs(STATE, exist_ok=True)
+    log = open(os.path.join(STATE, "err.log"), "a")
+    subprocess.Popen([os.path.abspath(sys.argv[0]), "run"], start_new_session=True,
+                     stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+    print("armed: accepts every popup until the match starts"); notify("Armed")
+
+
+def disarm():
+    if subprocess.run(["pkill", "-f", "dota-accept run$"]).returncode == 0:
+        print("disarmed"); notify("Disarmed")
+    else:
+        print("was not armed")
 
 
 def main():
-    arg = sys.argv[1] if len(sys.argv) > 1 else "on"
+    arg = sys.argv[1] if len(sys.argv) > 1 else "toggle"
     if arg == "--test":
         print(find_button(Image.open(sys.argv[2]), [float(x) for x in sys.argv[3:]] or [1.0]))
     elif arg == "run":
         run()
+    elif arg == "toggle":
+        disarm() if running() else arm()
+    elif arg == "on":
+        arm()
     elif arg == "off":
-        if subprocess.run(["pkill", "-f", "dota-accept run$"]).returncode == 0:
-            print("disarmed"); notify("Disarmed")
-        else:
-            print("was not armed")
+        disarm()
     elif arg == "status":
         print("armed" if running() else "off")
-    elif arg == "on":
-        if running():
-            print("already armed"); return
-        if subprocess.run(["pgrep", "-x", "dota2"], capture_output=True).returncode:
-            print("Dota is not running"); sys.exit(1)
-        os.makedirs(STATE, exist_ok=True)
-        log = open(os.path.join(STATE, "err.log"), "a")
-        subprocess.Popen([os.path.abspath(sys.argv[0]), "run"], start_new_session=True,
-                         stdin=subprocess.DEVNULL, stdout=log, stderr=log)
-        print("armed: switches to Dota and accepts when the match pops"); notify("Armed")
+    elif arg == "bar":
+        if not dota_running():
+            print(json.dumps({"text": ""}))
+        elif running():
+            print(json.dumps({"text": "\uf11b accept", "class": "armed", "tooltip": "Dota auto-accept: armed (click to disarm)"}))
+        else:
+            print(json.dumps({"text": "\uf11b", "class": "off", "tooltip": "Dota auto-accept: off (click to arm)"}))
     else:
         print(__doc__); sys.exit(2)
 

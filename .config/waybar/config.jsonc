@@ -11,6 +11,7 @@
     ],
     "modules-center": [],
     "modules-right": [
+        "custom/dota",
         "tray",
         "group/net",
         "group/audio",
@@ -163,5 +164,12 @@
             "clock#date",
             "clock"
         ]
+    },
+    "custom/dota": {
+        "exec": "~/.local/bin/dota-accept bar",
+        "return-type": "json",
+        "interval": 5,
+        "signal": 9,
+        "on-click": "~/.local/bin/dota-accept"
     }
 }
