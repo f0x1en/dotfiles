@@ -1,5 +1,5 @@
 #!/bin/sh
-# mod+Shift+m: show or hide the music window. Music keeps playing while it is hidden. q in rmpc stops the music and closes it; the next press starts it fresh.
+# mod+Shift+m: show or hide the music window. Music keeps playing while it is hidden. q in rmpc pauses the music and closes it; the next press starts it fresh.
 if swaymsg -t get_tree | jq -e '.. | select(.name? == "music")' >/dev/null 2>&1; then
   swaymsg '[title="^music$"] scratchpad show' >/dev/null
 else

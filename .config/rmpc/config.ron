@@ -33,7 +33,7 @@
     ),
     keybinds: (
         global: {
-            "q":          ExternalCommand(command: ["sh", "-c", "mpc -q stop; swaymsg '[title=\"^music$\"] kill'"], description: "Stop music and close the window"),
+            "q":          ExternalCommand(command: ["sh", "-c", "mpc -q pause; swaymsg '[title=\"^music$\"] kill'"], description: "Pause music and close the window"),
             "S":          ExternalCommand(command: ["music", "shuffle"], description: "Smart shuffle upcoming songs (music shuffle)"),
             "P":          ExternalCommand(command: ["music", "next"], description: "Play selected song now, after the playing one (music next)"),
             "F":          ExternalCommand(command: ["music", "find"], description: "Find a song: one box, any tag or filename (music find)"),
