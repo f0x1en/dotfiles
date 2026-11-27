@@ -138,9 +138,9 @@
     "group/net": {
         "orientation": "horizontal",
         "modules": [
-            "network",
+            "custom/proxy",
             "bluetooth",
-            "custom/proxy"
+            "network"
         ]
     },
     "group/audio": {
