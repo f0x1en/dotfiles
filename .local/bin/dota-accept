@@ -10,7 +10,8 @@ While armed: if Dota's window turns urgent (match found while you are
 elsewhere), switch to it and make it fullscreen. While Dota is visible, grab the
 middle of the screen once a second (grim) and look for the ACCEPT
 button that matches a cut-out of the real one. On a hit: click it with sway's seat
-cursor, notify, save the frame to ~/.local/state/dota-accept/, and disarm.
+cursor, check that the button is gone (clicks again, up to 5 times, if not),
+notify, save the frame to ~/.local/state/dota-accept/, and disarm.
 Also disarms when Dota exits.
 
 Never reads or touches the game: screenshots in, one mouse click out.
@@ -100,24 +101,36 @@ def tick():
     r = out["rect"]
     w, h = min(REGION[0], r["width"]), min(REGION[1], r["height"])
     x0, y0 = r["x"] + (r["width"] - w) // 2, r["y"] + (r["height"] - h) // 2
-    png = subprocess.run(["grim", "-g", f"{x0},{y0} {w}x{h}", "-"], capture_output=True).stdout
-    if not png:
-        return False
-    img = Image.open(io.BytesIO(png))
-    hit = find_button(img)
+    def grab():
+        png = subprocess.run(["grim", "-g", f"{x0},{y0} {w}x{h}", "-"], capture_output=True).stdout
+        if not png:
+            return None, None
+        img = Image.open(io.BytesIO(png))
+        return img, find_button(img)
+
+    img, hit = grab()
     if not hit:
         return False
     sh("swaymsg", f"[con_id={win['id']}] fullscreen enable")
-    cx, cy = x0 + hit[0], y0 + hit[1]
-    sh("swaymsg", f"seat seat0 cursor set {cx} {cy}")
-    sh("swaymsg", "seat seat0 cursor press button1")
-    time.sleep(0.05)
-    sh("swaymsg", "seat seat0 cursor release button1")
     os.makedirs(STATE, exist_ok=True)
     img.save(os.path.join(STATE, "last-click.png"))
-    with open(os.path.join(STATE, "log"), "a") as f:
-        f.write(f"{time.strftime('%F %T')} clicked {cx},{cy}\n")
-    return True
+    # Click, then confirm the button is gone; a click during the popup's
+    # fade-in can be dropped, so retry while ACCEPT is still on screen.
+    for attempt in range(1, 6):
+        cx, cy = x0 + hit[0], y0 + hit[1]
+        sh("swaymsg", f"seat seat0 cursor set {cx} {cy}")
+        time.sleep(0.1)  # let the game see the hover first
+        sh("swaymsg", "seat seat0 cursor press button1")
+        time.sleep(0.05)
+        sh("swaymsg", "seat seat0 cursor release button1")
+        with open(os.path.join(STATE, "log"), "a") as f:
+            f.write(f"{time.strftime('%F %T')} click {attempt} at {cx},{cy}\n")
+        time.sleep(0.7)
+        _, again = grab()
+        if not again:
+            return True
+        hit = again
+    return False  # still showing after 5 clicks; stay armed and keep trying
 
 
 def notify(msg):
@@ -139,7 +152,7 @@ def run():
                 return
         except Exception as e:  # keep running; sway may be mid-reload
             print("dota-accept:", e, file=sys.stderr)
-        time.sleep(1)
+        time.sleep(0.5)
 
 
 def main():
