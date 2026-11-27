@@ -21,10 +21,10 @@ mdpdf input.md [output.pdf]
 - Persian digits are converted to Western digits.
 - Check the result: `mutool draw -r 70 -o page%d.png out.pdf`, then look at the PNGs.
 
-## PDF -> Markdown: `pdf2md`
+## PDF -> Markdown: `pdfmd`
 
 ```sh
-pdf2md [--ocr] input.pdf [output.md]   # output '-' = stdout
+pdfmd [--ocr] input.pdf [output.md]   # output '-' = stdout
 ```
 
 - Uses `pdftotext` (poppler). It keeps Persian word order; pymupdf4llm and markitdown reverse RTL words (tested).
