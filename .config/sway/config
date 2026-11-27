@@ -82,8 +82,8 @@ bindsym --to-code $mod+Shift+n exec ~/.config/sway/scripts/tui-toggle wlctl wlct
 bindsym --to-code $mod+Shift+b exec ~/.config/sway/scripts/tui-toggle bluetui bluetui
 # Proxy (Bushuray)
 bindsym --to-code $mod+Shift+v exec ~/.config/sway/scripts/tui-toggle bushuray bushuray
-# Audio
-bindsym --to-code $mod+Shift+a exec ~/.config/sway/scripts/tui-toggle wiremix wiremix --tab playback
+# Audio: mod+Shift+a mixer; ctrl+r inside it resets audio (~/.local/bin/audio-reset)
+bindsym --to-code $mod+Shift+a exec ~/.config/sway/scripts/tui-toggle wiremix -o 'map ctrl+r launch --type=background /home/user/.local/bin/audio-reset' wiremix --tab playback
 # Music (mpd): mod+m shows or hides rmpc; mod+F7/F8/F9 prev, play/pause, next; mod+F10 smart shuffle (~/.local/bin/music)
 bindsym --to-code $mod+m exec ~/.config/sway/scripts/music-toggle
 bindsym --to-code $mod+F7 exec mpc -q prev

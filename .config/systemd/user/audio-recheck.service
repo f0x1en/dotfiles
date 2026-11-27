@@ -1,12 +1,12 @@
 # SOF firmware sometimes fails the probe at login ("STREAM_PCM_PARAMS ipc failed"),
-# leaving the card on profile "off" with only auto_null. Restart wireplumber once if so.
+# leaving the card on profile "off" with only auto_null. Run audio-reset once if so.
 [Unit]
 Description=Restart wireplumber if the sound card came up without outputs
 After=wireplumber.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'sleep 8; pactl list sinks short | grep -q alsa_output || systemctl --user restart wireplumber'
+ExecStart=/bin/sh -c 'sleep 8; pactl list sinks short | grep -q alsa_output || %h/.local/bin/audio-reset'
 
 [Install]
 WantedBy=default.target

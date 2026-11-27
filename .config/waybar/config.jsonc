@@ -111,7 +111,7 @@
         },
         "scroll-step": 5,
         "on-click": "wpctl set-mute @DEFAULT_SINK@ toggle",
-        "on-click-right": "kitty --title wiremix wiremix",
+        "on-click-right": "~/.config/sway/scripts/tui-toggle wiremix -o 'map ctrl+r launch --type=background /home/user/.local/bin/audio-reset' wiremix --tab playback",
         "tooltip": false
     },
     "pulseaudio#mic": {

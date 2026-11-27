@@ -1,0 +1,20 @@
+#!/bin/sh
+# audio-reset: fix "no sound output" (card stuck on profile off, only auto_null).
+# Restarts wireplumber; if there is still no ALSA output, restarts pipewire too.
+# Shows the result as a notification.
+# ctrl+r in the wiremix window (mod+Shift+a); audio-recheck.service runs it at login.
+has_out() { pactl list sinks short 2>/dev/null | grep -q alsa_output; }
+wait_out() {
+  i=0
+  until has_out; do i=$((i + 1)); [ "$i" -gt 20 ] && return 1; sleep 0.5; done
+}
+systemctl --user restart wireplumber
+if ! wait_out; then
+  systemctl --user restart pipewire pipewire-pulse wireplumber
+  wait_out
+fi
+if has_out; then
+  notify-send -a audio "Audio reset" "Output: $(pactl get-default-sink | sed 's/.*\.//')"
+else
+  notify-send -u critical -a audio "Audio reset failed" "No sound card output"
+fi
