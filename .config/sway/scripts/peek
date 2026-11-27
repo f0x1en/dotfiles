@@ -2,7 +2,8 @@
 # Usage: peek N | peek up | peek down
 # peek N (mod+Ctrl+N): float the last-focused window of workspace N over the
 # current workspace, see-through, and focus it.
-# Same key again, any mod+Ctrl+N, or switching workspace sends it back.
+# Same key again, mod+N, any mod+Ctrl+N, or switching workspace sends it back.
+# peek go N (mod+N): send back workspace N's peeking window, else switch to N.
 # The window carries a hidden mark _peekN so it knows where to return.
 # peek up/down (mod+Ctrl+=/-): opacity in 10% steps, 10-100%, shown on wob.
 # The level is remembered for later peeks until logout.
@@ -41,6 +42,10 @@ case "$1" in
     done
     exit 0 ;;
   end) back >/dev/null; exit 0 ;;
+  # mod+N: if workspace N's window is peeking, send it back and stay here.
+  go)
+    swaymsg -t get_marks | grep -q "\"_peek$2\"" && { back >/dev/null; exit 0; }
+    swaymsg "workspace number $2" >/dev/null; exit 0 ;;
 esac
 
 n=$1
