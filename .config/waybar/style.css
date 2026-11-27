@@ -45,7 +45,7 @@ window#waybar {
 }
 
 /* Right side: same padding and the same divider between every module */
-#tray, #backlight, #pulseaudio, #language, #clock {
+#tray, #backlight, #pulseaudio, #battery, #language, #clock {
     padding: 0 12px;
     color: #B8B8B8;
     border-left: 1px solid #242424;
@@ -64,6 +64,10 @@ window#waybar {
 }
 
 #pulseaudio.muted {
+    color: #CC5F5A;
+}
+
+#battery.critical:not(.charging) {
     color: #CC5F5A;
 }
 

@@ -15,6 +15,7 @@
         "backlight",
         "pulseaudio",
         "pulseaudio#mic",
+        "battery",
         "sway/language",
         "clock#date",
         "clock"
@@ -26,10 +27,27 @@
     "sway/workspaces": {
         "disable-scroll": true,
         "all-outputs": false,
-        "format": "{name}",
-        "persistent-workspaces": {
-            "1": [], "2": [], "3": [], "4": [], "5": [], "6": [], "7": [], "8": [], "9": []
+        "format": "{name} {windows}",
+        "format-window-separator": " ",
+        "window-rewrite-default": "\uf2d0",
+        "window-rewrite": {
+            "class<peek-hold>": "",
+            "class<kitty>": "\ue795",
+            "class<org.telegram.desktop>": "\uf2c6",
+            "class<firefox.*>": "\uf269",
+            "class<[Cc]hromium.*>": "\uf268",
+            "class<obsidian>": "\uf02d",
+            "class<[Ss]potify>": "\uf1bc",
+            "class<mpv>": "\uf03d"
         }
+    },
+    "battery": {
+        "states": { "critical": 15 },
+        "format": "<span color='#6B6B6B'>{icon}</span> {capacity}%",
+        "format-charging": "<span color='#6B6B6B'>\uf0e7</span> {capacity}%",
+        "format-plugged": "<span color='#6B6B6B'>\uf1e6</span> {capacity}%",
+        "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"],
+        "tooltip-format": "{timeTo}"
     },
     "backlight": {
         "format": "<span color='#6B6B6B'>󰃟</span> {percent}%",

@@ -35,6 +35,7 @@ back() {
   ret=""
   [ "$cur" != "${old#_peek}" ] && ret="; workspace number $cur"
   swaymsg "[con_mark=\"^$old\$\"] opacity 1, floating disable, move container to workspace number ${old#_peek}, unmark $old, focus$ret" >/dev/null
+  swaymsg '[app_id="^peek-hold$"] kill' >/dev/null 2>&1
   echo "${old#_peek}"
 }
 
@@ -73,3 +74,12 @@ printf '%s' "$tree" | jq -e --argjson id "$id" '.. | select(.id? == $id and .typ
 
 swaymsg "[con_id=$id] mark --add _peek$n, move container to workspace number $cur, floating enable, resize set width 100 ppt height 100 ppt, move position center, opacity $(awk "BEGIN{print $op/100}"), focus" >/dev/null
 "$0" watch >/dev/null 2>&1 &
+
+# Workspace N is now empty and gone. Put an invisible placeholder there so
+# it stays in the bar while its window peeks.
+foot -a peek-hold sleep infinity >/dev/null 2>&1 &
+i=0
+until swaymsg -t get_tree | jq -e '.. | select(.app_id? == "peek-hold")' >/dev/null; do
+  i=$((i + 1)); [ "$i" -gt 40 ] && exit 0; sleep 0.05
+done
+swaymsg "[app_id=\"^peek-hold\$\"] move container to workspace number $n; [con_id=$id] focus" >/dev/null
