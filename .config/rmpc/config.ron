@@ -35,6 +35,7 @@
         global: {
             "q":          Quit,
             "S":          ExternalCommand(command: ["music", "shuffle"], description: "Smart shuffle upcoming songs (music shuffle)"),
+            "P":          ExternalCommand(command: ["music", "next"], description: "Play selected song now, after the playing one (music next)"),
             "F":          ExternalCommand(command: ["music", "find"], description: "Find a song: one box, any tag or filename (music find)"),
             "<C-t>":      ExternalCommand(command: ["music", "delete"], description: "Trash playing track (music delete)"),
             "?":          ExternalCommand(command: ["music", "keys"], description: "Short key list (music keys)"),
@@ -103,7 +104,6 @@
             "n":          NextResult,
             "N":          PreviousResult,
             "a":          Add,
-            "P":          ExternalCommand(command: ["music", "next"], description: "Play selected song now, after the playing one (music next)"),
             "A":          AddAll,
             "D":          Delete,
             "<C-r>":      Rename,
