@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""music: extras for mpd (player UI is rmpc on mod+m).
+"""music: extras for mpd (player UI is rmpc on mod+Shift+m).
 
 music shuffle           re-order the songs after the playing one, each folder spread out (empty queue: whole library)
 music find              one search box (fuzzel) over every song's tags and filename; enter plays it
@@ -106,8 +106,7 @@ v          single on/off (on = stops after each song)
 x          random on/off
 q          close window (music keeps playing)
 F1         every rmpc key (long list)
-Super+m    show / hide this window
-Super+Shift+m   restart this window (reloads config)
+Super+Shift+m   show / hide this window
 Super+F7 F8 F9   previous / pause / next (anywhere)"""
 
 

@@ -1,10 +1,5 @@
 #!/bin/sh
-# mod+m: show or hide the music window. Music keeps playing while it is hidden.
-# mod+Shift+m (arg restart): close it and open a fresh one, e.g. after a config change.
-if [ "$1" = restart ]; then
-  swaymsg '[title="^music$"] kill' >/dev/null
-  while swaymsg -t get_tree | jq -e '.. | select(.name? == "music")' >/dev/null 2>&1; do sleep 0.1; done
-fi
+# mod+Shift+m: show or hide the music window. Music keeps playing while it is hidden. q in rmpc quits it, so the next press starts it fresh.
 if swaymsg -t get_tree | jq -e '.. | select(.name? == "music")' >/dev/null 2>&1; then
   swaymsg '[title="^music$"] scratchpad show' >/dev/null
 else

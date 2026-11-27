@@ -50,7 +50,7 @@ Global rules in `~/.claude/CLAUDE.md` still apply.
 - User units: `mpd`, `mpDris2` (MPRIS for playerctl), `music-watch` (pauses on headphone loss).
 - UI: rmpc v0.11.0, a GitHub release binary in `~/.local/bin` (not apt). install.sh pins it with sha256.
   Config `~/.config/rmpc/config.ron`, theme `themes/campbell.ron` (README palette).
-- `mod+m` runs `~/.config/sway/scripts/music-toggle` (kitty titled `music`, scratchpad).
+- `mod+Shift+m` runs `~/.config/sway/scripts/music-toggle` (kitty titled `music`, scratchpad).
   `mod+F7/F8/F9` call `mpc`. `mod+F10` runs `music shuffle`.
 - `~/.local/bin/music` holds the extras: `find` (fuzzel box over all tags + filename, rmpc `F`), `shuffle` (reorders the songs after the current one,
   spreading each folder out), `delete` (fuzzel confirm, then `gio trash`), `watch`.
