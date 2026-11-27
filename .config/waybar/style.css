@@ -20,11 +20,24 @@ window#waybar {
     padding: 0 6px;
 }
 
-/* Right side: every module gets the same padding, no dividers */
+/* Right side: related modules share a group; one divider between groups */
+#tray, #net, #audio, #power, #language, #time {
+    padding: 0 7px;
+    border-left: 1px solid #242424;
+}
+
+#tray {
+    border-left: none;
+}
+
 #tray, #network, #bluetooth, #custom-proxy, #pulseaudio, #backlight,
 #battery, #language, #clock {
-    padding: 0 14px;
+    padding: 0 7px;
     color: #B8B8B8;
+}
+
+#tray, #language {
+    padding: 0 14px;
 }
 
 /* Workspaces: every button has the same box; only color and the underline change */
