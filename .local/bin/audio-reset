@@ -14,7 +14,7 @@ if ! wait_out; then
   wait_out
 fi
 if has_out; then
-  notify-send -a audio "Audio reset" "Output: $(pactl get-default-sink | sed 's/.*\.//')"
+  notify-send -a audio "Audio reset" "Output: $(pactl get-default-sink | sed 's/.*\.//')\nGames that stay silent need a restart."
 else
   notify-send -u critical -a audio "Audio reset failed" "No sound card output"
 fi
