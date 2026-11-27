@@ -1,0 +1,10 @@
+#!/bin/sh
+# tui-toggle TITLE CMD...: open CMD in a kitty window titled TITLE (floated by
+# a for_window rule), or close that window if it is already open.
+# Used by mod+Shift+n/b/a and by the bar's Wi-Fi, Bluetooth and proxy clicks.
+t=$1; shift
+if swaymsg -t get_tree | jq -e --arg t "$t" '.. | select(.name? == $t)' >/dev/null 2>&1; then
+  swaymsg "[title=\"^$t\$\"] kill" >/dev/null
+else
+  exec kitty --title "$t" "$@"
+fi

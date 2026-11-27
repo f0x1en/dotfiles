@@ -20,9 +20,11 @@ window#waybar {
     padding: 0 6px;
 }
 
-/* Right side: one group per box, the same divider between every group */
-#tray, #sys, #audio, #power, #language, #time {
-    padding: 0 6px;
+/* Right side: every module gets the same padding and the same divider */
+#tray, #network, #bluetooth, #custom-proxy, #pulseaudio, #backlight,
+#battery, #language, #clock {
+    padding: 0 14px;
+    color: #B8B8B8;
     border-left: 1px solid #242424;
 }
 
@@ -54,17 +56,6 @@ window#waybar {
     border-bottom-color: #CC5F5A;
 }
 
-/* Modules inside a pill: same padding, no dividers */
-#tray, #network, #bluetooth, #custom-proxy, #backlight, #pulseaudio,
-#battery, #language, #clock {
-    padding: 0 6px;
-    color: #B8B8B8;
-}
-
-#tray, #language {
-    padding: 0 12px;
-}
-
 #clock {
     color: #D4D4D4;
 }
@@ -73,11 +64,8 @@ window#waybar {
     color: #B8B8B8;
 }
 
-#custom-proxy.ok {
-    color: #6B6B6B;
-}
-
-#pulseaudio.muted, #battery.critical:not(.charging), #custom-proxy.down {
+#pulseaudio.muted, #battery.critical:not(.charging), #custom-proxy.down,
+#network.disconnected {
     color: #CC5F5A;
 }
 

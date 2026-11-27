@@ -1,9 +1,19 @@
 #!/bin/sh
-# Waybar custom/proxy: globe icon, red (class "down") when the proxy on 10808
-# fails the same check as `proxy` (generate_204 through socks5h).
-if curl -s -o /dev/null -m 8 --noproxy '' -x socks5h://127.0.0.1:10808 \
-    -w '%{http_code}' https://www.gstatic.com/generate_204 | grep -q 204; then
-  echo '{"text": "\uf0ac", "class": "ok", "tooltip": "proxy 10808 ok"}'
+# Waybar custom/proxy: engine and delay through 127.0.0.1:10808, same check as `proxy`.
+# Class ok, fallback (running on v2rayN) or down. Signal 8 refreshes it.
+if systemctl --user -q is-active bushuray; then e=Bushuray
+elif systemctl --user -q is-active proxy-fallback; then e=v2rayN
+else e=none; fi
+r=$(curl -s -o /dev/null -m 8 --noproxy '' -x socks5h://127.0.0.1:10808 \
+    -w '%{http_code} %{time_total}' https://www.gstatic.com/generate_204)
+ic='#6B6B6B'
+if [ "${r% *}" = 204 ]; then
+  ms=$(awk "BEGIN{printf \"%d\", ${r#* } * 1000}")
+  cls=ok; text="${ms}ms"
+  [ "$e" = v2rayN ] && cls=fallback && text="v2rayN ${ms}ms"
+  tip="$e: ok, $ms ms\nclick: Bushuray  right-click: retry"
 else
-  echo '{"text": "\uf0ac", "class": "down", "tooltip": "proxy 10808 down"}'
+  cls=down; text=down; ic='#CC5F5A'
+  tip="$e: check failed\nclick: Bushuray  right-click: retry"
 fi
+printf '{"text": "<span color='"'"'%s'"'"' size='"'"'large'"'"'>󰖂</span> %s", "class": "%s", "tooltip": "%s"}\n' "$ic" "$text" "$cls" "$tip"

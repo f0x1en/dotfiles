@@ -77,11 +77,11 @@ bindsym --to-code $mod+Shift+c reload
 # Exit Sway
 bindsym --to-code $mod+Shift+e exec swaymsg exit
 # Network
-bindsym --to-code $mod+Shift+n exec kitty --title wlctl wlctl
+bindsym --to-code $mod+Shift+n exec ~/.config/sway/scripts/tui-toggle wlctl wlctl
 # Bluetooth
-bindsym --to-code $mod+Shift+b exec kitty --title bluetui bluetui
+bindsym --to-code $mod+Shift+b exec ~/.config/sway/scripts/tui-toggle bluetui bluetui
 # Audio
-bindsym --to-code $mod+Shift+a exec kitty --title wiremix wiremix --tab playback
+bindsym --to-code $mod+Shift+a exec ~/.config/sway/scripts/tui-toggle wiremix wiremix --tab playback
 # Music (mpd): mod+m shows or hides rmpc; mod+F7/F8/F9 prev, play/pause, next; mod+F10 smart shuffle (~/.local/bin/music)
 bindsym --to-code $mod+m exec ~/.config/sway/scripts/music-toggle
 bindsym --to-code $mod+F7 exec mpc -q prev
@@ -193,6 +193,7 @@ floating_modifier $mod
 for_window [title="^wlctl$"] floating enable, resize set width 900px height 600px
 for_window [title="^bluetui$"] floating enable, resize set width 900px height 600px
 for_window [title="^wiremix$"] floating enable, resize set width 900px height 600px
+for_window [title="^bushuray$"] floating enable, resize set width 900px height 600px
 for_window [title="^music$"] move scratchpad, scratchpad show, resize set width 90 ppt height 85 ppt, move position center
 for_window [title="^sway-help$"] floating enable, resize set width 760px height 620px, move position center
 
