@@ -103,7 +103,7 @@
             "n":          NextResult,
             "N":          PreviousResult,
             "a":          Add,
-            "P":          AddOptions(kind: Action(all: false, autoplay: Hovered, position: AfterCurrentSong)),
+            "P":          ExternalCommand(command: ["music", "next"], description: "Play selected song now, after the playing one (music next)"),
             "A":          AddAll,
             "D":          Delete,
             "<C-r>":      Rename,

@@ -3,6 +3,7 @@
 
 music shuffle           re-order the songs after the playing one, each folder spread out (empty queue: whole library)
 music find              one search box (fuzzel) over every song's tags and filename; enter plays it
+music next              play rmpc's selected songs now, after the playing one (rmpc P)
 music keys              short searchable list of the rmpc keys (rmpc ?)
 music delete            move the playing track to the trash (asks first), play the next one
 music watch             pause when the output switches away from headphones/bluetooth/HDMI/USB
@@ -58,16 +59,29 @@ def find():
                           input="\n".join(labels) + "\n", capture_output=True, text=True).stdout.strip()
     if not pick:
         return
-    f = rows[int(pick)][0]
+    play_now([rows[int(pick)][0]])
+
+
+def play_now(files):
+    """Play files now: jump to one already queued, else put them after the playing song (or at the end) and play."""
     queue = [q for q in mpc("-f", "%file%", "playlist").split("\n") if q]
-    if f in queue:
-        mpc("play", str(queue.index(f) + 1))
+    if len(files) == 1 and files[0] in queue:
+        mpc("play", str(queue.index(files[0]) + 1))
     elif mpc("-f", "%position%", "current").strip():
-        mpc("insert", f)
+        for f in reversed(files):  # each insert goes right after the playing song
+            mpc("insert", f)
         mpc("next")
     else:
-        mpc("add", f)
+        mpc("add", *files)
         mpc("play", str(len(queue) + 1))
+
+
+def next_():
+    """rmpc P: play the selected (or hovered) songs now; works on an empty queue too."""
+    files = [f for f in os.environ.get("SELECTED_SONGS", "").splitlines() if f]
+    if not files:
+        raise SystemExit("no song selected")
+    play_now(files)
 
 
 KEYS = """\
@@ -154,6 +168,8 @@ def main():
         shuffle()
     elif cmd == "find" and not args:
         find()
+    elif cmd == "next" and not args:
+        next_()
     elif cmd == "keys" and not args:
         keys()
     elif cmd == "delete" and not args:
