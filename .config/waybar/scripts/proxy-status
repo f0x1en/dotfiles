@@ -11,9 +11,9 @@ if [ "${r% *}" = 204 ]; then
   ms=$(awk "BEGIN{printf \"%d\", ${r#* } * 1000}")
   cls=ok; text="${ms}ms"
   [ "$e" = v2rayN ] && cls=fallback && text="v2rayN ${ms}ms"
-  tip="$e: ok, $ms ms\nclick: Bushuray  right-click: retry"
+  tip="$e: ok, $ms ms"
 else
   cls=down; text=down; ic='#CC5F5A'
-  tip="$e: check failed\nclick: Bushuray  right-click: retry"
+  tip="$e: check failed"
 fi
 printf '{"text": "<span color='"'"'%s'"'"' size='"'"'large'"'"'>󰖂</span> %s", "class": "%s", "tooltip": "%s"}\n' "$ic" "$text" "$cls" "$tip"
