@@ -5,7 +5,7 @@ description: Convert between PDF and Markdown on this machine, including Persian
 
 # pdf-md
 
-Two local commands in `~/.local/bin` (tracked in the dotfiles repo).
+Local commands in `~/.local/bin` (tracked in the dotfiles repo): `mdpdf`, `pdfmd`, `pdf-fixmap`.
 
 ## Markdown -> PDF: `mdpdf`
 
@@ -14,12 +14,13 @@ mdpdf input.md [output.pdf]
 ```
 
 - pandoc -> HTML -> headless chromium. Fonts: Inter (Latin), Vazirmatn (Persian), JetBrains Mono (code).
-- Each block picks its own direction from its first strong letter (`dir="auto"`).
-  A Persian line that starts with a Latin word (`MSVC ...`, `**volatile**: ...`) renders LTR.
-  Fix: start the line with a Persian word (`کامپایلر MSVC ...`).
-- Do not put Persian inside code blocks: the mono font has no Persian shaping. Use English comments.
+  Chromium was kept after a web search: it shapes and orders Persian correctly with no LaTeX setup.
+- Each block (p, li, ul, ol, headings, cells) gets its direction from its majority script, so
+  "MSVC برای ..." is RTL. Pure-English blocks stay LTR.
+- Code blocks: each line picks its own direction; Persian comments fall back to Vazirmatn.
 - Persian digits are converted to Western digits.
 - Check the result: `mutool draw -r 70 -o page%d.png out.pdf`, then look at the PNGs.
+- Round-trip check: `pdfmd out.pdf -` and compare the Persian words with the source.
 
 ## PDF -> Markdown: `pdfmd`
 
@@ -27,22 +28,27 @@ mdpdf input.md [output.pdf]
 pdfmd [--ocr] input.pdf [output.md]   # output '-' = stdout
 ```
 
-- Uses `pdftotext` (poppler). It keeps Persian word order; pymupdf4llm and markitdown reverse RTL words (tested).
-- Output is plain paragraphs. Headings, tables and lists are not recovered; add Markdown by hand.
-- Bidi control marks stay in the output on purpose: they place punctuation and numbers correctly.
-- Broken font maps are repaired automatically. Some Persian PDFs printed from a browser map
-  glyphs to U+FFFD or U+06FF ("تحق�ق"). `pdfmd` then runs `pdf-fixmap`: it OCRs only the lines
-  with broken glyphs, votes per glyph, and fixes the PDF's ToUnicode map. Result: exact text.
-  Manual use: `pdf-fixmap in.pdf fixed.pdf` (`FIXMAP_DEBUG=1` prints the votes).
-  It uses `$HOME/.local/share/tessdata-best` (tessdata_best fas/eng) if present, else the system models.
-- Half-spaces (ZWNJ) are not stored in PDFs. `pdfmd` restores them from the letter shapes
-  (a joining letter followed directly by a letter in its initial shape), and `pdf-fixmap`
-  writes repaired letters in their shaped form so this still works.
-- Brackets around Persian-only text come out mirrored from pdftotext; `pdfmd` flips `)…(` back.
-- Known issue: PDFs set in Vazirmatn (including `mdpdf` output) extract `لا` as `ال`
-  (the font draws the ligature as two glyphs in visual order). Rendering is fine.
-- `--ocr` is for scans with no text layer: full OCR with `ocrmypdf` + `tesseract-ocr-fas` (installed).
-  Languages: `PDFMD_LANG`, default `fas+eng`. OCR makes word errors; prefer the text layer when there is one.
+Base: `pdftotext` (poppler) keeps Persian word order; pymupdf4llm, markitdown and MuPDF text
+reverse RTL words (tested). Output is plain paragraphs: headings, tables and lists are not
+recovered. Bidi control marks stay in the output on purpose (they place numbers and punctuation).
+
+Persian text triggers `pdf-fixmap` (repairs a copy of the PDF's ToUnicode maps; page content
+unchanged), then these fixes. Each one solves a case seen in real PDFs:
+
+| Problem | Seen in | Fix |
+|---|---|---|
+| Glyphs map to U+FFFD / U+06FF ("تحق�ق") | Firefox/cairo prints (Quera) | `pdf-fixmap`: OCR lines with broken glyphs (tesseract fas, tessdata_best), vote per glyph |
+| Multi-char glyphs reversed ("ال" for "لا", "ٔه") | MS Word | `pdf-fixmap` pre-reverses Persian multi-char map entries (poppler bug 55977) |
+| "لا" ligature as one glyph comes out "ال" | Chromium (Vazirmatn) | `pdfmd` swaps only when `mutool trace` (raw glyphs, x order) has the swapped word |
+| Vowel marks before their letter ("فّرار") | Chromium | marks placed per the trace word (mark attached to the letter it sits over) |
+| Half-spaces (ZWNJ) lost | all | from letter shapes; for Word (plain-letter maps) `pdf-fixmap` learns each glyph's shape from word ends |
+| Brackets mirrored / split around English | all | `)…(` and `)‪ RISC (…‬` rebuilt to `(…)` |
+
+- Debug: `FIXMAP_DEBUG=1 pdf-fixmap in.pdf out.pdf` prints OCR votes and misses.
+- Known gap: a font that maps letter shapes to plain letters *and* also has shaped entries
+  (some cairo PDFs) loses ZWNJ for those plain glyphs ("نرمافزار").
+- `--ocr` is for scans with no text layer: full OCR with `ocrmypdf` + `tesseract-ocr-fas`.
+  Languages: `PDFMD_LANG`, default `fas+eng`. OCR makes word errors; prefer the text layer.
 
 ## Homework convention
 

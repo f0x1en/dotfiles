@@ -9,12 +9,17 @@ real letter, so text extraction shows "تحق�ق").
 How: give each broken glyph a unique private-use code, OCR only the words
 that contain one (tesseract, fas, whole line), line the OCR word up with the known
 letters, vote per glyph, write the winning letter into the font's ToUnicode.
+Also: glyphs that map to 2+ Persian characters ("لا", "هٔ") are pre-reversed,
+because pdftotext reverses them (poppler bug 55977). And: PDFs from MS Word map every letter shape (initial, medial, final,
+isolated) to the plain letter, which hides where half-spaces (ZWNJ) were.
+Each glyph's shape is learned from where it appears (word start/end) and the
+shaped form is written into the map, so text tools can restore half-spaces.
 The page content is not changed.
 
 Usage: pdf-fixmap input.pdf output.pdf
 Exit 0 = repaired (or nothing to repair). Prints a summary on stderr.
 """
-import collections, os, re, subprocess, sys, tempfile, unicodedata
+import collections, html, os, re, subprocess, sys, tempfile, unicodedata
 import pymupdf
 
 BAD = {"FFFD", "06FF"}
@@ -28,16 +33,42 @@ def norm(s):
     return re.sub(r"[‌‍‎‏ً-ٰٟ]", "", s)
 
 
-def ocr(png):
+def ocr_box(page, r, lh, png, psm="7"):
+    """OCR one box; try several sizes, plain then black/white."""
+    h = lh * 0.6  # white margin; tesseract needs it
+    r = pymupdf.Rect(r.x0 - h, r.y0 - h, r.x1 + h, r.y1 + h) & page.rect
+    for px, bw in TRIES:  # line height in pixels, black/white
+        pix = page.get_pixmap(clip=r, dpi=int(72 * px / lh), colorspace="gray")
+        if bw:  # anti-aliased bold text can OCR to nothing
+            pix = pymupdf.Pixmap(pymupdf.csGRAY, pix.width, pix.height,
+                                 bytes(pix.samples).translate(THRESH), False)
+        pix.save(png)
+        got = ocr(png, psm)
+        if got:
+            return got
+    return ""
+
+
+def ocr(png, psm="7"):
     env = dict(os.environ)
     if os.path.isdir(BEST):
         env["TESSDATA_PREFIX"] = BEST
-    r = subprocess.run(["tesseract", png, "-", "-l", "fas", "--psm", "7"],
+    r = subprocess.run(["tesseract", png, "-", "-l", "fas", "--psm", psm],
                        capture_output=True, text=True, env=env)
     return norm(r.stdout.strip())
 
 
 def vote(word, cands):
+    word = "".join(c for c in word if c in PUAS or "\u0600" <= norm(c)[:1] <= "\u06ff")
+    if vote1(word, cands):
+        return True
+    # OCR often reads گ as ک: retry with both folded to ک
+    fold = str.maketrans("گ", "ک")
+    return vote1("".join(c if c in PUAS else norm(c).translate(fold) for c in word),
+                 [c.translate(fold) for c in cands])
+
+
+def vote1(word, cands):
     """Known letters are fixed; each broken glyph = 1 letter, else 2 (ligature).
     Last try: 1 letter per glyph, allow 1 OCR mistake on the known letters."""
     keys = [c for c in word if c in PUAS]
@@ -48,7 +79,7 @@ def vote(word, cands):
             if m:
                 for k, v in zip(keys, m.groups()):
                     VOTES[k][v] += 1
-                return
+                return True
     w = [c if c in PUAS else norm(c) for c in word]
     if len(w) == len(word) and len(w) - len(keys) >= 4:
         for cand in cands:
@@ -58,7 +89,7 @@ def vote(word, cands):
                     for k, v in zip(w, win):
                         if k in PUAS:
                             VOTES[k][v] += 1
-                    return
+                    return True
     if os.environ.get("FIXMAP_DEBUG"):
         print("no match:", repr(word), "ocr:", repr(cands[0]), file=sys.stderr)
 
@@ -85,6 +116,135 @@ def shaped(letter, k):
         return letter
 
 
+def joins_left(c):
+    """Plain Arabic letter that has an initial form (joins the next letter)."""
+    try:
+        unicodedata.lookup(unicodedata.name(c) + " INITIAL FORM")
+        return True
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
+def is_letter(u):
+    return len(u) == 1 and ("\u0620" <= u <= "\u064a" or "\u066e" <= u <= "\u06d3")
+
+
+def set_map(text, cid, hexval):
+    """Point one CID to hexval in a ToUnicode CMap (bfchar entry or bfrange)."""
+    m = re.search(rf"(?mi)^<{cid:04X}>\s*<([0-9A-F]+)>[ \t]*$", text)
+    if m:  # never touch a glyph that stands for 2+ characters
+        return text if len(m.group(1)) > 4 else text[:m.start()] + f"<{cid:04X}> <{hexval}>" + text[m.end():]
+
+    def rng(m):
+        a, b = int(m.group(1), 16), int(m.group(2), 16)
+        if not a <= cid <= b:
+            return m.group(0)
+        if m.group(3):  # <a> <b> <start>
+            vals = [f"{int(m.group(3), 16) + i:04X}" for i in range(b - a + 1)]
+        else:  # <a> <b> [<v1> <v2> ...]
+            vals = re.findall(r"<([0-9A-Fa-f]+)>", m.group(4))
+        if len(vals[cid - a]) == 4:  # never touch a glyph that stands for 2+ characters
+            vals[cid - a] = hexval
+        return f"<{a:04X}> <{b:04X}> [" + " ".join(f"<{v}>" for v in vals) + "]"
+
+    return re.sub(r"(?m)^<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>\s*(?:<([0-9A-Fa-f]+)>|(\[[^\]]*\]))[ \t]*$",
+                  rng, text)
+
+
+def unreverse(doc):
+    """pdftotext reverses glyphs that map to 2+ characters inside RTL text (poppler
+    bug 55977): "لا" -> "ال", "هٔ" -> "ٔه". Pre-reverse such all-Persian entries."""
+    def flip(m):
+        cs = [m.group(1)[i:i + 4] for i in range(0, len(m.group(1)), 4)]
+        if not all("0600" <= c.upper() <= "06FF" for c in cs):
+            return m.group(0)
+        return "<" + "".join(reversed(cs)) + ">"
+
+    done = set()
+    for xref in range(1, doc.xref_length()):
+        tu = doc.xref_get_key(xref, "ToUnicode")
+        if tu[0] != "xref" or tu[1] in done:
+            continue
+        done.add(tu[1])
+        cx = int(tu[1].split()[0])
+        text = doc.xref_stream(cx).decode("latin-1")
+        new = re.sub(r"<((?:[0-9A-Fa-f]{4}){2,})>", flip, text)  # only targets are 8+ hex
+        if new != text:
+            doc.update_stream(cx, new.encode("latin-1"))
+
+
+def restore_shapes(doc, src):
+    """Word-style maps: learn each plain-letter glyph's shape, write the shaped form."""
+    trace = subprocess.run(["mutool", "trace", src], capture_output=True, text=True).stdout
+    lines, page, font = collections.defaultdict(list), 0, None
+    last = None
+    for m in re.finditer(r'<page |<span font="([^"]*)"|<g unicode="([^"]*)" glyph="(-?\d+)" '
+                         r'x="([-0-9.]+)" y="([-0-9.]+)"', trace):
+        if m.group(0) == "<page ":
+            page += 1
+        elif m.group(1) is not None:
+            font = m.group(1)
+        else:
+            u = html.unescape(m.group(2))
+            if m.group(3) == "-1":  # extra character of the previous glyph ("لا", "هٔ")
+                if last:
+                    last[3] += u
+                continue
+            last = None
+            if not re.fullmatch("[\u064b-\u0655\u0640]+", u):  # skip marks, kashida
+                last = [float(m.group(4)), font, int(m.group(3)), u]
+                lines[page, round(float(m.group(5)))].append(last)
+    ev = collections.defaultdict(lambda: [0, 0, 0])  # (font, gid) -> [at start, at end, uses]
+    # glyphs that stand for 2+ characters (ligature "لا", "هٔ") appear once per
+    # character with the same id: never overwrite those
+    chars = collections.defaultdict(set)
+    for gl in lines.values():
+        for _, f, gid, u in gl:
+            chars[f, gid].add(u)
+    multi = {k for k, v in chars.items() if len(v) > 1}
+    plain = {}
+    for gl in lines.values():
+        # right to left = reading order. Word draws a half-space as a zero-width space
+        # at the x of the letter before it: shift spaces so they sort after that letter.
+        gl.sort(key=lambda g: -(g[0] - 0.5 if g[3].isspace() else g[0]))
+        for i, (_, f, gid, u) in enumerate(gl):
+            if not (is_letter(u) and joins_left(u)) or (f, gid) in multi:
+                continue
+            prev = gl[i - 1][3] if i else ""
+            nxt = gl[i + 1][3] if i + 1 < len(gl) else ""
+            ev[f, gid][0] += not (is_letter(prev) and joins_left(prev))
+            ev[f, gid][1] += not is_letter(nxt)
+            ev[f, gid][2] += 1
+            plain[f, gid] = u
+    # A glyph that mostly ends words is a final/isolated shape: it does not join the
+    # next letter. Map it to letter + ZWNJ; pdfmd keeps the ZWNJ only between letters.
+    # (Presentation-form letters are not used: pdftotext then drops overlapping
+    # glyphs such as the alef of "لا" and the hamza of "هٔ".)
+    shapes = {}
+    for (f, gid), (start, end, n) in ev.items():
+        if 2 * end >= n:  # majority vote: a stray mis-sorted neighbour must not decide
+            # written as ZWNJ + letter: pdftotext reverses 2-char maps in RTL text
+            shapes[f, gid] = "\u200c" + plain[f, gid]
+    done = set()
+    for xref in range(1, doc.xref_length()):
+        tu = doc.xref_get_key(xref, "ToUnicode")
+        base = doc.xref_get_key(xref, "BaseFont")[1].lstrip("/")
+        if tu[0] != "xref" or tu[1] in done:
+            continue
+        done.add(tu[1])
+        cx = int(tu[1].split()[0])
+        text = new = doc.xref_stream(cx).decode("latin-1")
+        if re.search(r"(?i)<F[B-E][0-9A-F]{2}>", text):  # map already has shaped letters
+            continue
+        for (f, gid), ch in shapes.items():
+            if f == base:  # CID == glyph id for Identity fonts; set_map only changes listed CIDs
+                new = set_map(new, gid, "".join(f"{ord(c):04X}" for c in ch))
+        if new != text:
+            doc.update_stream(cx, new.encode("latin-1"))
+            if os.environ.get("FIXMAP_DEBUG"):
+                print("shapes restored:", base, sum(f == base for f, _ in shapes), file=sys.stderr)
+
+
 PUAS = {}
 JOINS = collections.defaultdict(collections.Counter)
 TRIES = [(60, False), (45, False), (60, True), (90, True)]
@@ -94,6 +254,8 @@ VOTES = collections.defaultdict(collections.Counter)
 
 def main(src, dst):
     doc = pymupdf.open(src)
+    restore_shapes(doc, src)
+    unreverse(doc)
     pua = PUAS  # pua char -> (cmap xref, cid hex)
     cmaps = {}  # cmap xref -> text
     for xref in range(1, doc.xref_length()):
@@ -118,7 +280,6 @@ def main(src, dst):
             doc.update_stream(cx, new.encode("latin-1"))
     if not pua:
         doc.save(dst)
-        print("pdf-fixmap: no broken glyph maps", file=sys.stderr)
         return
 
     votes = VOTES
@@ -131,8 +292,13 @@ def main(src, dst):
                     for w in text.split():
                         for i, c in enumerate(w):
                             if c in pua:
-                                JOINS[c]["prev"] += i > 0 and form(w[i - 1]) in ("INITIAL", "MEDIAL")
-                                JOINS[c]["next"] += i + 1 < len(w) and form(w[i + 1]) in ("MEDIAL", "FINAL")
+                                # unknown neighbours (broken or plain letters) count as joined;
+                                # only a definite shape or a word edge says "not joined"
+                                p_, n_ = w[i - 1] if i else "", w[i + 1] if i + 1 < len(w) else ""
+                                JOINS[c]["prev"] += bool(p_) and (form(p_) in ("INITIAL", "MEDIAL")
+                                                                  or p_ in pua or form(p_) is None and joins_left(p_))
+                                JOINS[c]["next"] += bool(n_) and (form(n_) in ("MEDIAL", "FINAL")
+                                                                  or n_ in pua or form(n_) is None and is_letter(n_))
                                 JOINS[c]["n"] += 1
                     words = [w for w in text.split() if any(c in pua for c in w)
                              and sum(c not in pua for c in w) >= 2]
@@ -140,21 +306,17 @@ def main(src, dst):
                         continue
                     r = pymupdf.Rect(line["bbox"])
                     lh = max(r.height, 1)
-                    h = lh * 0.6  # white margin; tesseract needs it
-                    r = pymupdf.Rect(r.x0 - h, r.y0 - h, r.x1 + h, r.y1 + h) & page.rect
-                    got = ""
-                    for px, bw in TRIES:  # line height in pixels, black/white
-                        pix = page.get_pixmap(clip=r, dpi=int(72 * px / lh), colorspace="gray")
-                        if bw:  # anti-aliased bold text can OCR to nothing
-                            pix = pymupdf.Pixmap(pymupdf.csGRAY, pix.width, pix.height,
-                                                 bytes(pix.samples).translate(THRESH), False)
-                        pix.save(png)
-                        got = ocr(png)
-                        if got:
-                            break
+                    got = ocr_box(page, r, lh, png)
                     cands = [got, got[::-1], got.replace(" ", ""), got[::-1].replace(" ", "")]
                     for word in words:
-                        vote(word, cands)
+                        if vote(word, cands):
+                            continue
+                        # line OCR failed for this word: OCR the word box alone
+                        for wb in page.get_text("words", clip=r):
+                            if wb[4] == word:
+                                g = ocr_box(page, pymupdf.Rect(wb[:4]), lh, png, "8")
+                                vote(word, [g, g[::-1]])
+                                break
 
     fixed = {}
     for ch, (cx, cid) in pua.items():

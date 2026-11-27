@@ -31,13 +31,15 @@ if [ $ocr = 1 ]; then
 fi
 
 pdftotext -enc UTF-8 "$in" "$tmp/out.txt"
-if grep -q "$(printf '\357\277\275\|\333\277')" "$tmp/out.txt"; then  # U+FFFD, U+06FF
+# Persian text: repair the PDF's glyph maps first (broken glyphs, letter shapes).
+if LC_ALL=C grep -q "$(printf '[\330-\333]')" "$tmp/out.txt"; then
     pdf-fixmap "$in" "$tmp/fixed.pdf"
-    pdftotext -enc UTF-8 "$tmp/fixed.pdf" "$tmp/out.txt"
+    in=$tmp/fixed.pdf
+    pdftotext -enc UTF-8 "$in" "$tmp/out.txt"
 fi
 
 python3 -I -c '
-import re, sys, unicodedata
+import collections, html, re, subprocess, sys, unicodedata
 t = open(sys.argv[1], encoding="utf-8").read()
 
 def form(c):
@@ -52,12 +54,120 @@ def joins_left(c):  # letter that has an initial form, so it normally joins the 
         return False
 
 # Half-space (ZWNJ): the PDF draws "حوزه‌ها" as ه + initial-form ه with nothing
-# between. A joining letter (not in initial/medial shape; plain letters count too)
-# followed directly by a letter in initial/isolated shape means a ZWNJ was there.
-t = "".join(c + ("\u200c" if form(c) not in ("INITIAL", "MEDIAL") and joins_left(c)
-                 and form(d) in ("INITIAL", "ISOLATED") else "")
-            for c, d in zip(t, t[1:] + " "))
+# between. A joining letter in final/isolated shape directly followed by a letter,
+# or a plain joining letter followed by an initial/isolated shape, means a ZWNJ.
+def zwnj(c, d):
+    if not joins_left(c) or form(d) is None and not is_letter(d):
+        return False
+    return form(c) in ("FINAL", "ISOLATED") or form(c) is None and form(d) in ("INITIAL", "ISOLATED")
+
+def is_letter(c):
+    return "\u0620" <= c <= "\u064a" or "\u066e" <= c <= "\u06d3"
+
+t = "".join(c + ("\u200c" if zwnj(c, d) else "") for c, d in zip(t, t[1:] + " "))
+# pdf-fixmap marks word-final glyphs with a ZWNJ: keep it only between two letters
+t = re.sub("\u200c+", "\u200c", t)
+t = re.sub("(?<![\u0620-\u06d3\ufb50-\ufefc])\u200c|\u200c(?![\u0620-\u06d3\ufb50-\ufefc])", "", t)
 t = unicodedata.normalize("NFKC", t).replace("\f", "\n\n")
+# Reference words from the raw glyph trace (MuPDF). pdftotext gets two things wrong
+# that the trace gets right: the ligature "لا" comes out "ال" (poppler bug 55977),
+# and vowel marks come before their letter ("فّرار" for "فرّار"). Glyphs of a line
+# are sorted right to left; each mark goes after the letter it sits over.
+trace = subprocess.run(["mutool", "trace", sys.argv[3]], capture_output=True, text=True).stdout
+MARK = "\u064b-\u0655"
+MARKS = re.compile(f"[{MARK}]")
+key = lambda w: re.sub(f"[{MARK}\u200c]", "", w)
+glyphs, page, size, last = [], 0, 12.0, None
+for m in re.finditer(r"<page |<span [^>]*trm=\"([-0-9.]+)|<g unicode=\"([^\"]*)\" glyph=\"(-?[0-9]+)\" "
+                     r"x=\"([-0-9.]+)\" y=\"([-0-9.]+)\"(?: adv=\"([-0-9.]+)\")?", trace):
+    if m.group(0) == "<page ":
+        page += 1
+    elif m.group(1):
+        size = abs(float(m.group(1))) or size
+    elif m.group(3) == "-1" and last:  # extra character of the previous glyph ("لا")
+        last[3] += html.unescape(m.group(2))
+    else:
+        last = [page, float(m.group(5)), float(m.group(4)), html.unescape(m.group(2)),
+                float(m.group(6) or 0) * size, size]
+        glyphs.append(last)
+lines, cur = [], None
+for g in sorted(glyphs, key=lambda g: (g[0], g[1])):  # marks sit a little higher: y tolerance
+    if cur and g[0] == cur[-1][0] and g[1] - cur[-1][1] <= 0.35 * g[5]:
+        cur.append(g)
+    else:
+        cur = [g]
+        lines.append(cur)
+ref = {}  # word without marks/ZWNJ -> word with marks after their letters
+for gl in lines:
+    letters = sorted((g for g in gl if not MARKS.fullmatch(g[3][:1] or "x")), key=lambda g: -g[2])
+    out = [g[3] for g in letters]
+    for g in gl:
+        if letters and MARKS.fullmatch(g[3][:1] or "x"):
+            # the letter whose span [x, x + advance] holds the mark, else the nearest
+            k = min(range(len(letters)), key=lambda i: max(letters[i][2] - g[2], 0,
+                                                            g[2] - letters[i][2] - letters[i][4]))
+            out[k] += g[3]
+    # a wide gap between glyphs (table cells on one row) separates words
+    text = "".join(o + (" " if i + 1 < len(letters) and letters[i][2] - letters[i + 1][2]
+                        - letters[i + 1][4] > 0.3 * letters[i][5] else "")
+                   for i, o in enumerate(out))
+    text = unicodedata.normalize("NFKC", text)
+    for w in re.findall(r"[\u0600-\u06ff\u200c]+", text):
+        ref.setdefault(key(w), w)
+
+def lamalef(m):
+    w = m.group(0)
+    # a mark right before "ال" never happens in real text: it is a reversed "لاً"
+    if key(w) in ref and not re.search(f"[{MARK}]\u0627\u0644", w):
+        return w
+    # "ال" with any marks before it ("مثًال") is a reversed "لا" + marks ("مثلاً")
+    hits = list(re.finditer(f"([{MARK}]*)\u0627\u0644", w))
+    for k in range(1, 1 << len(hits)):  # try every subset of positions
+        v, last = "", 0
+        for b, h in enumerate(hits):
+            v += w[last:h.start()] + ("\u0644\u0627" + h.group(1) if k >> b & 1 else h.group(0))
+            last = h.end()
+        v += w[last:]
+        if key(v) in ref:
+            return v
+    return w
+
+def remark(m):
+    """Put each vowel mark after the letter it belongs to, as in the trace word."""
+    w = m.group(0)
+    r = ref.get(key(w))
+    if r is None or len(MARKS.findall(r)) != len(MARKS.findall(w)) or not MARKS.search(w):
+        return w
+    after, i = collections.defaultdict(str), -1
+    for c in r:
+        if MARKS.fullmatch(c):
+            after[i] += c
+        elif c != "\u200c":
+            i += 1
+    out, i = after[-1], -1
+    for c in MARKS.sub("", w):
+        out += c
+        if c != "\u200c":
+            i += 1
+            out += after[i]
+    return out
+
+t = re.sub(r"[\u0600-\u06ff\u200c]*\u0627\u0644[\u0600-\u06ff\u200c]*", lamalef, t)
+t = re.sub(r"[\u0600-\u06ff\u200c]+", remark, t)
+# Fallback when the trace has no match: tanwin/hamza before their final letter.
+t = re.sub("([\u064b\u0654])([\u0627\u0647\u06cc])(?![\u0600-\u06ff])", r"\2\1", t)
+# Brackets around English text inside Persian come out split around a bidi
+# embedding: "(\u202a )Assembly\u202c", ")\u202a (c.s\u202c", ")\u202a RISC (Reduced …\u202c"
+# -> "(Assembly)", "(c.s)", "RISC (Reduced …)".
+def brackets(m):
+    inner = m.group(1)
+    if inner.count("(") > inner.count(")"):  # outer bracket belongs at the end
+        return f"\u202a{inner.strip()})\u202c" + (" " if inner[:1] == " " else "")
+    lead = re.match(r"( *)([\u060c\u061b]?) *\)(.*)", inner, re.S)
+    if lead and "(" not in lead.group(3):  # outer bracket opens, the embed starts with ")"
+        return f"\u202a({lead.group(3)})\u202c{lead.group(2)}" + (" " if lead.group(1) else "")
+    return m.group(0)
+t = re.sub("[()]\u202a([^\u202c]*)\u202c", brackets, t)
 # Brackets around Persian-only text come out mirrored: ")اسمبلی(" -> "(اسمبلی)".
 t = re.sub(r"\)([\u0600-\u06ff\u200c ]+)\(", r"(\1)", t)
 t = re.sub(r"\n{3,}", "\n\n", t).strip() + "\n"
@@ -68,4 +178,4 @@ if sys.argv[2] == "-":
     sys.stdout.write(t)
 else:
     open(sys.argv[2], "w", encoding="utf-8").write(t)
-' "$tmp/out.txt" "$out"
+' "$tmp/out.txt" "$out" "$in"
