@@ -4,7 +4,8 @@
 # markitdown reverse RTL words. Output is plain paragraphs (no headings/tables).
 # Bidi marks from pdftotext are kept: they place punctuation and numbers
 # correctly. NFKC turns Arabic/Persian presentation-form
-# glyphs back into normal letters.
+# glyphs back into normal letters; the shapes are used first to restore
+# half-spaces (ZWNJ). Mirrored brackets around Persian text are fixed.
 # Broken font maps (glyphs extract as U+FFFD or U+06FF, common in Persian PDFs
 # printed from a browser) are repaired automatically with pdf-fixmap.
 # --ocr: re-OCR every page first with ocrmypdf, for scans with no text layer.
@@ -38,7 +39,27 @@ fi
 python3 -I -c '
 import re, sys, unicodedata
 t = open(sys.argv[1], encoding="utf-8").read()
+
+def form(c):
+    n = unicodedata.name(c, "")
+    return next((f for f in ("INITIAL", "MEDIAL", "FINAL", "ISOLATED") if n.endswith(f" {f} FORM")), None)
+
+def joins_left(c):  # letter that has an initial form, so it normally joins the next letter
+    try:
+        unicodedata.lookup(unicodedata.name(unicodedata.normalize("NFKC", c)) + " INITIAL FORM")
+        return True
+    except (KeyError, ValueError, TypeError):  # TypeError: ligature, 2 letters
+        return False
+
+# Half-space (ZWNJ): the PDF draws "حوزه‌ها" as ه + initial-form ه with nothing
+# between. A joining letter (not in initial/medial shape; plain letters count too)
+# followed directly by a letter in initial/isolated shape means a ZWNJ was there.
+t = "".join(c + ("\u200c" if form(c) not in ("INITIAL", "MEDIAL") and joins_left(c)
+                 and form(d) in ("INITIAL", "ISOLATED") else "")
+            for c, d in zip(t, t[1:] + " "))
 t = unicodedata.normalize("NFKC", t).replace("\f", "\n\n")
+# Brackets around Persian-only text come out mirrored: ")اسمبلی(" -> "(اسمبلی)".
+t = re.sub(r"\)([\u0600-\u06ff\u200c ]+)\(", r"(\1)", t)
 t = re.sub(r"\n{3,}", "\n\n", t).strip() + "\n"
 bad = t.count("�")
 if bad:

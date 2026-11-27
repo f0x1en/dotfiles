@@ -63,7 +63,30 @@ def vote(word, cands):
         print("no match:", repr(word), "ocr:", repr(cands[0]), file=sys.stderr)
 
 
+def form(c):
+    """Presentation form of an Arabic letter glyph: INITIAL, MEDIAL, FINAL, ISOLATED or None."""
+    name = unicodedata.name(c, "")
+    for f in ("INITIAL", "MEDIAL", "FINAL", "ISOLATED"):
+        if name.endswith(f" {f} FORM"):
+            return f
+    return None
+
+
+def shaped(letter, k):
+    """Letter in the joined shape seen around broken glyph k (keeps ZWNJ info)."""
+    if len(letter) != 1:
+        return letter
+    j = JOINS[k]
+    prev, nxt = 2 * j["prev"] > j["n"], 2 * j["next"] > j["n"]
+    f = {(0, 0): "ISOLATED", (1, 0): "FINAL", (0, 1): "INITIAL", (1, 1): "MEDIAL"}[prev, nxt]
+    try:
+        return unicodedata.lookup(f"{unicodedata.name(letter)} {f} FORM")
+    except KeyError:
+        return letter
+
+
 PUAS = {}
+JOINS = collections.defaultdict(collections.Counter)
 TRIES = [(60, False), (45, False), (60, True), (90, True)]
 THRESH = bytes(0 if i < 153 else 255 for i in range(256))
 VOTES = collections.defaultdict(collections.Counter)
@@ -105,6 +128,12 @@ def main(src, dst):
             for blk in page.get_text("dict")["blocks"]:
                 for line in blk.get("lines", []):
                     text = "".join(sp["text"] for sp in line["spans"])
+                    for w in text.split():
+                        for i, c in enumerate(w):
+                            if c in pua:
+                                JOINS[c]["prev"] += i > 0 and form(w[i - 1]) in ("INITIAL", "MEDIAL")
+                                JOINS[c]["next"] += i + 1 < len(w) and form(w[i + 1]) in ("MEDIAL", "FINAL")
+                                JOINS[c]["n"] += 1
                     words = [w for w in text.split() if any(c in pua for c in w)
                              and sum(c not in pua for c in w) >= 2]
                     if not words:
@@ -132,6 +161,8 @@ def main(src, dst):
         best = votes[ch].most_common(1)
         val = best[0][0] if best else "�"
         fixed[ch] = val
+        if val != "\ufffd":
+            val = shaped(val, ch)
         cmaps[cx] = re.sub(rf"<{cid}>\s*<[0-9A-Fa-f]{{4}}>",
                            f"<{cid}> <{''.join(f'{ord(c):04X}' for c in val)}>",
                            cmaps[cx], count=1)

@@ -35,7 +35,12 @@ pdfmd [--ocr] input.pdf [output.md]   # output '-' = stdout
   with broken glyphs, votes per glyph, and fixes the PDF's ToUnicode map. Result: exact text.
   Manual use: `pdf-fixmap in.pdf fixed.pdf` (`FIXMAP_DEBUG=1` prints the votes).
   It uses `$HOME/.local/share/tessdata-best` (tessdata_best fas/eng) if present, else the system models.
-- Zero-width non-joiners are not in such PDFs, so `حوزه‌ها` comes out as `حوزهها`.
+- Half-spaces (ZWNJ) are not stored in PDFs. `pdfmd` restores them from the letter shapes
+  (a joining letter followed directly by a letter in its initial shape), and `pdf-fixmap`
+  writes repaired letters in their shaped form so this still works.
+- Brackets around Persian-only text come out mirrored from pdftotext; `pdfmd` flips `)…(` back.
+- Known issue: PDFs set in Vazirmatn (including `mdpdf` output) extract `لا` as `ال`
+  (the font draws the ligature as two glyphs in visual order). Rendering is fine.
 - `--ocr` is for scans with no text layer: full OCR with `ocrmypdf` + `tesseract-ocr-fas` (installed).
   Languages: `PDFMD_LANG`, default `fas+eng`. OCR makes word errors; prefer the text layer when there is one.
 
