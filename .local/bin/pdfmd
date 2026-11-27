@@ -5,9 +5,11 @@
 # Bidi marks from pdftotext are kept: they place punctuation and numbers
 # correctly. NFKC turns Arabic/Persian presentation-form
 # glyphs back into normal letters.
-# --ocr: re-OCR every page first with ocrmypdf. Languages: $PDFMD_LANG
-# (default fas+eng; PDFMD_LANG=fas reads Persian better but breaks English words). Use it for scans and
-# for PDFs whose fonts have broken Unicode maps (output full of U+FFFD).
+# Broken font maps (glyphs extract as U+FFFD or U+06FF, common in Persian PDFs
+# printed from a browser) are repaired automatically with pdf-fixmap.
+# --ocr: re-OCR every page first with ocrmypdf, for scans with no text layer.
+# Languages: $PDFMD_LANG (default fas+eng; fas alone reads Persian better but
+# breaks English words).
 set -eu
 
 ocr=0
@@ -28,6 +30,10 @@ if [ $ocr = 1 ]; then
 fi
 
 pdftotext -enc UTF-8 "$in" "$tmp/out.txt"
+if grep -q "$(printf '\357\277\275\|\333\277')" "$tmp/out.txt"; then  # U+FFFD, U+06FF
+    pdf-fixmap "$in" "$tmp/fixed.pdf"
+    pdftotext -enc UTF-8 "$tmp/fixed.pdf" "$tmp/out.txt"
+fi
 
 python3 -I -c '
 import re, sys, unicodedata
@@ -36,7 +42,7 @@ t = unicodedata.normalize("NFKC", t).replace("\f", "\n\n")
 t = re.sub(r"\n{3,}", "\n\n", t).strip() + "\n"
 bad = t.count("�")
 if bad:
-    print(f"pdfmd: {bad} unreadable glyphs (broken font map). Try: pdfmd --ocr ...", file=sys.stderr)
+    print(f"pdfmd: {bad} unreadable glyphs (pdf-fixmap could not repair them). Try: pdfmd --ocr ...", file=sys.stderr)
 if sys.argv[2] == "-":
     sys.stdout.write(t)
 else:

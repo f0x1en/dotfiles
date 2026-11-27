@@ -1,0 +1,152 @@
+#!/usr/bin/env -S uv run -q --script
+# /// script
+# dependencies = ["pymupdf"]
+# ///
+"""pdf-fixmap: repair broken ToUnicode maps in a PDF (common in Persian PDFs
+printed from a browser: some glyphs map to U+FFFD or U+06FF instead of the
+real letter, so text extraction shows "تحق�ق").
+
+How: give each broken glyph a unique private-use code, OCR only the words
+that contain one (tesseract, fas, whole line), line the OCR word up with the known
+letters, vote per glyph, write the winning letter into the font's ToUnicode.
+The page content is not changed.
+
+Usage: pdf-fixmap input.pdf output.pdf
+Exit 0 = repaired (or nothing to repair). Prints a summary on stderr.
+"""
+import collections, os, re, subprocess, sys, tempfile, unicodedata
+import pymupdf
+
+BAD = {"FFFD", "06FF"}
+PUA = 0xE000
+BEST = os.path.expanduser("~/.local/share/tessdata-best")
+
+
+def norm(s):
+    s = unicodedata.normalize("NFKC", s)
+    s = s.translate(str.maketrans("يكۀ", "یکه"))
+    return re.sub(r"[‌‍‎‏ً-ٰٟ]", "", s)
+
+
+def ocr(png):
+    env = dict(os.environ)
+    if os.path.isdir(BEST):
+        env["TESSDATA_PREFIX"] = BEST
+    r = subprocess.run(["tesseract", png, "-", "-l", "fas", "--psm", "7"],
+                       capture_output=True, text=True, env=env)
+    return norm(r.stdout.strip())
+
+
+def vote(word, cands):
+    """Known letters are fixed; each broken glyph = 1 letter, else 2 (ligature).
+    Last try: 1 letter per glyph, allow 1 OCR mistake on the known letters."""
+    keys = [c for c in word if c in PUAS]
+    for g in ("(.)", "(..)"):
+        pat = "".join(g if c in PUAS else re.escape(norm(c)) for c in word)
+        for cand in cands:
+            m = re.search(pat, cand)
+            if m:
+                for k, v in zip(keys, m.groups()):
+                    VOTES[k][v] += 1
+                return
+    w = [c if c in PUAS else norm(c) for c in word]
+    if len(w) == len(word) and len(w) - len(keys) >= 4:
+        for cand in cands:
+            for i in range(len(cand) - len(w) + 1):
+                win = cand[i:i + len(w)]
+                if sum(a != b for a, b in zip(w, win) if a not in PUAS) <= 1:
+                    for k, v in zip(w, win):
+                        if k in PUAS:
+                            VOTES[k][v] += 1
+                    return
+    if os.environ.get("FIXMAP_DEBUG"):
+        print("no match:", repr(word), "ocr:", repr(cands[0]), file=sys.stderr)
+
+
+PUAS = {}
+TRIES = [(60, False), (45, False), (60, True), (90, True)]
+THRESH = bytes(0 if i < 153 else 255 for i in range(256))
+VOTES = collections.defaultdict(collections.Counter)
+
+
+def main(src, dst):
+    doc = pymupdf.open(src)
+    pua = PUAS  # pua char -> (cmap xref, cid hex)
+    cmaps = {}  # cmap xref -> text
+    for xref in range(1, doc.xref_length()):
+        tu = doc.xref_get_key(xref, "ToUnicode")
+        if tu[0] != "xref":
+            continue
+        cx = int(tu[1].split()[0])
+        if cx in cmaps:
+            continue
+        text = doc.xref_stream(cx).decode("latin-1")
+        cmaps[cx] = text
+
+        def sub(m):
+            if m.group(2).upper() not in BAD:
+                return m.group(0)
+            ch = chr(PUA + len(pua))
+            pua[ch] = (cx, m.group(1))
+            return f"<{m.group(1)}> <{ord(ch):04X}>"
+
+        new = re.sub(r"<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>", sub, text)
+        if new != text:
+            doc.update_stream(cx, new.encode("latin-1"))
+    if not pua:
+        doc.save(dst)
+        print("pdf-fixmap: no broken glyph maps", file=sys.stderr)
+        return
+
+    votes = VOTES
+    with tempfile.TemporaryDirectory() as tmp:
+        png = os.path.join(tmp, "w.png")
+        for page in doc:
+            for blk in page.get_text("dict")["blocks"]:
+                for line in blk.get("lines", []):
+                    text = "".join(sp["text"] for sp in line["spans"])
+                    words = [w for w in text.split() if any(c in pua for c in w)
+                             and sum(c not in pua for c in w) >= 2]
+                    if not words:
+                        continue
+                    r = pymupdf.Rect(line["bbox"])
+                    lh = max(r.height, 1)
+                    h = lh * 0.6  # white margin; tesseract needs it
+                    r = pymupdf.Rect(r.x0 - h, r.y0 - h, r.x1 + h, r.y1 + h) & page.rect
+                    got = ""
+                    for px, bw in TRIES:  # line height in pixels, black/white
+                        pix = page.get_pixmap(clip=r, dpi=int(72 * px / lh), colorspace="gray")
+                        if bw:  # anti-aliased bold text can OCR to nothing
+                            pix = pymupdf.Pixmap(pymupdf.csGRAY, pix.width, pix.height,
+                                                 bytes(pix.samples).translate(THRESH), False)
+                        pix.save(png)
+                        got = ocr(png)
+                        if got:
+                            break
+                    cands = [got, got[::-1], got.replace(" ", ""), got[::-1].replace(" ", "")]
+                    for word in words:
+                        vote(word, cands)
+
+    fixed = {}
+    for ch, (cx, cid) in pua.items():
+        best = votes[ch].most_common(1)
+        val = best[0][0] if best else "�"
+        fixed[ch] = val
+        cmaps[cx] = re.sub(rf"<{cid}>\s*<[0-9A-Fa-f]{{4}}>",
+                           f"<{cid}> <{''.join(f'{ord(c):04X}' for c in val)}>",
+                           cmaps[cx], count=1)
+    for cx, text in cmaps.items():
+        doc.update_stream(cx, text.encode("latin-1"))
+    doc.save(dst, garbage=3, deflate=True)
+    if os.environ.get("FIXMAP_DEBUG"):
+        for k, (cx, cid) in pua.items():
+            print(cx, cid, dict(votes[k]), file=sys.stderr)
+    ok = sum(v != "�" for v in fixed.values())
+    print(f"pdf-fixmap: repaired {ok}/{len(fixed)} broken glyphs: "
+          + " ".join(f"{pua[k][1]}={v}" for k, v in fixed.items()), file=sys.stderr)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit("Usage: pdf-fixmap input.pdf output.pdf")
+    main(sys.argv[1], sys.argv[2])

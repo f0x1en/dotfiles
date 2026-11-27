@@ -30,11 +30,14 @@ pdfmd [--ocr] input.pdf [output.md]   # output '-' = stdout
 - Uses `pdftotext` (poppler). It keeps Persian word order; pymupdf4llm and markitdown reverse RTL words (tested).
 - Output is plain paragraphs. Headings, tables and lists are not recovered; add Markdown by hand.
 - Bidi control marks stay in the output on purpose: they place punctuation and numbers correctly.
-- Warning `N unreadable glyphs (broken font map)` means the PDF fonts have no Unicode map
-  (common in Persian PDFs printed from browsers). Text extraction cannot fix it. Use `--ocr`.
-- `--ocr` uses `ocrmypdf` + `tesseract-ocr-fas` (installed). Languages: `PDFMD_LANG`, default `fas+eng`.
-  `fas+eng` keeps English right but misreads some Persian words as Latin junk.
-  `PDFMD_LANG=fas pdfmd --ocr ...` reads Persian better but breaks English words (`C++`, `PDF`).
+- Broken font maps are repaired automatically. Some Persian PDFs printed from a browser map
+  glyphs to U+FFFD or U+06FF ("تحق�ق"). `pdfmd` then runs `pdf-fixmap`: it OCRs only the lines
+  with broken glyphs, votes per glyph, and fixes the PDF's ToUnicode map. Result: exact text.
+  Manual use: `pdf-fixmap in.pdf fixed.pdf` (`FIXMAP_DEBUG=1` prints the votes).
+  It uses `$HOME/.local/share/tessdata-best` (tessdata_best fas/eng) if present, else the system models.
+- Zero-width non-joiners are not in such PDFs, so `حوزه‌ها` comes out as `حوزهها`.
+- `--ocr` is for scans with no text layer: full OCR with `ocrmypdf` + `tesseract-ocr-fas` (installed).
+  Languages: `PDFMD_LANG`, default `fas+eng`. OCR makes word errors; prefer the text layer when there is one.
 
 ## Homework convention
 
