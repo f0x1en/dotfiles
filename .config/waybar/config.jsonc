@@ -9,9 +9,7 @@
     "modules-left": [
         "sway/workspaces"
     ],
-    "modules-center": [
-        "mpd"
-    ],
+    "modules-center": [],
     "modules-right": [
         "tray",
         "group/sys",
@@ -24,16 +22,6 @@
     "group/audio": { "orientation": "horizontal", "modules": ["pulseaudio", "pulseaudio#mic"] },
     "group/power": { "orientation": "horizontal", "modules": ["backlight", "battery"] },
     "group/time": { "orientation": "horizontal", "modules": ["clock#date", "clock"] },
-    "mpd": {
-        "format": "<span color='#6B6B6B'>{stateIcon}</span> {title}",
-        "format-stopped": "",
-        "format-disconnected": "",
-        "state-icons": { "playing": "\uf04b", "paused": "\uf04c" },
-        "max-length": 45,
-        "on-click": "mpc -q toggle",
-        "on-click-right": "~/.config/sway/scripts/music-toggle",
-        "tooltip-format": "{artist} - {title}"
-    },
     "network": {
         "format-wifi": "<span color='#6B6B6B'>\uf1eb</span> {essid}",
         "format-ethernet": "<span color='#6B6B6B'>\uf0e8</span> wired",
@@ -62,7 +50,7 @@
     "sway/workspaces": {
         "disable-scroll": true,
         "all-outputs": false,
-        "format": "{name} {windows}",
+        "format": "{name} <span size='large'>{windows}</span>",
         "format-window-separator": " ",
         "window-rewrite-default": "\uf2d0",
         "window-rewrite": {

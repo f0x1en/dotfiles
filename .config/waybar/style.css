@@ -9,26 +9,25 @@
     border-radius: 0;
 }
 
-/* Pills: the bar itself is see-through, each group is its own rounded box */
 window#waybar {
-    background: transparent;
-    color: #B8B8B8;
-}
-
-#workspaces, #mpd, #tray, #sys, #audio, #power, #language, #time {
     background: rgba(12, 12, 12, 0.94);
+    color: #B8B8B8;
     border: 1px solid #242424;
     border-radius: 6px;
-    margin: 0 3px;
-    padding: 0 6px;
 }
 
 #workspaces {
-    margin-left: 0;
+    padding: 0 6px;
 }
 
-#time {
-    margin-right: 0;
+/* Right side: one group per box, the same divider between every group */
+#tray, #sys, #audio, #power, #language, #time {
+    padding: 0 6px;
+    border-left: 1px solid #242424;
+}
+
+#tray {
+    border-left: none;
 }
 
 /* Workspaces: every button has the same box; only color and the underline change */
@@ -56,13 +55,13 @@ window#waybar {
 }
 
 /* Modules inside a pill: same padding, no dividers */
-#mpd, #tray, #network, #bluetooth, #custom-proxy, #backlight, #pulseaudio,
+#tray, #network, #bluetooth, #custom-proxy, #backlight, #pulseaudio,
 #battery, #language, #clock {
     padding: 0 6px;
     color: #B8B8B8;
 }
 
-#mpd, #tray, #language {
+#tray, #language {
     padding: 0 12px;
 }
 
