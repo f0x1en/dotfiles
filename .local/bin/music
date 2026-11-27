@@ -107,6 +107,7 @@ x          random on/off
 q          close window (music keeps playing)
 F1         every rmpc key (long list)
 Super+m    show / hide this window
+Super+Shift+m   restart this window (reloads config)
 Super+F7 F8 F9   previous / pause / next (anywhere)"""
 
 
