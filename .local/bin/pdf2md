@@ -1,0 +1,43 @@
+#!/bin/sh
+# pdf2md: PDF -> Markdown-ready text via pdftotext (poppler).
+# pdftotext is used because it keeps Persian word order; pymupdf4llm and
+# markitdown reverse RTL words. Output is plain paragraphs (no headings/tables).
+# Bidi marks from pdftotext are kept: they place punctuation and numbers
+# correctly. NFKC turns Arabic/Persian presentation-form
+# glyphs back into normal letters.
+# --ocr: re-OCR every page first with ocrmypdf (fas+eng). Use it for scans and
+# for PDFs whose fonts have broken Unicode maps (output full of U+FFFD).
+set -eu
+
+ocr=0
+[ "${1:-}" = "--ocr" ] && { ocr=1; shift; }
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: pdf2md [--ocr] input.pdf [output.md]   (output '-' = stdout)" >&2
+    exit 2
+fi
+
+in=$1
+out=${2:-${1%.*}.md}
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+if [ $ocr = 1 ]; then
+    ocrmypdf -q -l fas+eng --force-ocr --output-type pdf "$in" "$tmp/ocr.pdf"
+    in=$tmp/ocr.pdf
+fi
+
+pdftotext -enc UTF-8 "$in" "$tmp/out.txt"
+
+python3 -I -c '
+import re, sys, unicodedata
+t = open(sys.argv[1], encoding="utf-8").read()
+t = unicodedata.normalize("NFKC", t).replace("\f", "\n\n")
+t = re.sub(r"\n{3,}", "\n\n", t).strip() + "\n"
+bad = t.count("�")
+if bad:
+    print(f"pdf2md: {bad} unreadable glyphs (broken font map). Try: pdf2md --ocr ...", file=sys.stderr)
+if sys.argv[2] == "-":
+    sys.stdout.write(t)
+else:
+    open(sys.argv[2], "w", encoding="utf-8").write(t)
+' "$tmp/out.txt" "$out"
