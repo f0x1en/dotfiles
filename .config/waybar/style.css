@@ -9,18 +9,29 @@
     border-radius: 0;
 }
 
+/* Pills: the bar itself is see-through, each group is its own rounded box */
 window#waybar {
-    background: rgba(12, 12, 12, 0.94);
+    background: transparent;
     color: #B8B8B8;
-    border: 1px solid #242424;
-    border-radius: 6px;
 }
 
-/* Workspaces: every button has the same box; only color and the underline change */
-#workspaces {
+#workspaces, #mpd, #tray, #sys, #audio, #power, #language, #time {
+    background: rgba(12, 12, 12, 0.94);
+    border: 1px solid #242424;
+    border-radius: 6px;
+    margin: 0 3px;
     padding: 0 6px;
 }
 
+#workspaces {
+    margin-left: 0;
+}
+
+#time {
+    margin-right: 0;
+}
+
+/* Workspaces: every button has the same box; only color and the underline change */
 #workspaces button {
     padding: 0 9px;
     margin: 0 1px;
@@ -44,30 +55,30 @@ window#waybar {
     border-bottom-color: #CC5F5A;
 }
 
-/* Right side: same padding and the same divider between every module */
-#tray, #backlight, #pulseaudio, #battery, #language, #clock {
+/* Modules inside a pill: same padding, no dividers */
+#mpd, #tray, #network, #bluetooth, #custom-proxy, #backlight, #pulseaudio,
+#battery, #language, #clock {
+    padding: 0 6px;
+    color: #B8B8B8;
+}
+
+#mpd, #tray, #language {
     padding: 0 12px;
-    color: #B8B8B8;
-    border-left: 1px solid #242424;
-}
-
-#tray {
-    border-left: none;
-}
-
-#clock.date {
-    color: #B8B8B8;
 }
 
 #clock {
     color: #D4D4D4;
 }
 
-#pulseaudio.muted {
-    color: #CC5F5A;
+#clock.date {
+    color: #B8B8B8;
 }
 
-#battery.critical:not(.charging) {
+#custom-proxy.ok {
+    color: #6B6B6B;
+}
+
+#pulseaudio.muted, #battery.critical:not(.charging), #custom-proxy.down {
     color: #CC5F5A;
 }
 

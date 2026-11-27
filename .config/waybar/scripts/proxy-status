@@ -1,0 +1,9 @@
+#!/bin/sh
+# Waybar custom/proxy: globe icon, red (class "down") when the proxy on 10808
+# fails the same check as `proxy` (generate_204 through socks5h).
+if curl -s -o /dev/null -m 8 --noproxy '' -x socks5h://127.0.0.1:10808 \
+    -w '%{http_code}' https://www.gstatic.com/generate_204 | grep -q 204; then
+  echo '{"text": "\uf0ac", "class": "ok", "tooltip": "proxy 10808 ok"}'
+else
+  echo '{"text": "\uf0ac", "class": "down", "tooltip": "proxy 10808 down"}'
+fi

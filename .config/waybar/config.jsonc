@@ -9,17 +9,52 @@
     "modules-left": [
         "sway/workspaces"
     ],
-    "modules-center": [],
+    "modules-center": [
+        "mpd"
+    ],
     "modules-right": [
         "tray",
-        "backlight",
-        "pulseaudio",
-        "pulseaudio#mic",
-        "battery",
+        "group/sys",
+        "group/audio",
+        "group/power",
         "sway/language",
-        "clock#date",
-        "clock"
+        "group/time"
     ],
+    "group/sys": { "orientation": "horizontal", "modules": ["network", "bluetooth", "custom/proxy"] },
+    "group/audio": { "orientation": "horizontal", "modules": ["pulseaudio", "pulseaudio#mic"] },
+    "group/power": { "orientation": "horizontal", "modules": ["backlight", "battery"] },
+    "group/time": { "orientation": "horizontal", "modules": ["clock#date", "clock"] },
+    "mpd": {
+        "format": "<span color='#6B6B6B'>{stateIcon}</span> {title}",
+        "format-stopped": "",
+        "format-disconnected": "",
+        "state-icons": { "playing": "\uf04b", "paused": "\uf04c" },
+        "max-length": 45,
+        "on-click": "mpc -q toggle",
+        "on-click-right": "~/.config/sway/scripts/music-toggle",
+        "tooltip-format": "{artist} - {title}"
+    },
+    "network": {
+        "format-wifi": "<span color='#6B6B6B'>\uf1eb</span> {essid}",
+        "format-ethernet": "<span color='#6B6B6B'>\uf0e8</span> wired",
+        "format-disconnected": "<span color='#CC5F5A'>\uf1eb</span> <span color='#CC5F5A'>off</span>",
+        "tooltip-format": "{ifname} {ipaddr} {signalStrength}%",
+        "max-length": 20
+    },
+    "bluetooth": {
+        "format": "<span color='#6B6B6B'>\uf293</span>",
+        "format-off": "<span color='#5A5A5A'>\uf293</span>",
+        "format-connected": "<span color='#6B6B6B'>\uf293</span> {device_alias}",
+        "tooltip-format-connected": "{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias} {device_battery_percentage}%",
+        "on-click": "blueman-manager"
+    },
+    "custom/proxy": {
+        "exec": "~/.config/waybar/scripts/proxy-status",
+        "return-type": "json",
+        "interval": 60,
+        "on-click": "kitty --hold proxy"
+    },
     "tray": {
         "icon-size": 16,
         "spacing": 8
