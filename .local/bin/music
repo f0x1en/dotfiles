@@ -104,7 +104,7 @@ Space      select several rows (then a or D)
 z          repeat on/off
 v          single on/off (on = stops after each song)
 x          random on/off
-q          close window (music keeps playing)
+q          stop music and close the window
 F1         every rmpc key (long list)
 Super+Shift+m   show / hide this window
 Super+F7 F8 F9   previous / pause / next (anywhere)"""
