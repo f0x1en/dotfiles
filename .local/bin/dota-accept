@@ -14,9 +14,10 @@ While armed:
 - On a hit: click it with sway's seat cursor, check the button is gone (clicks
   again, up to 5 times, if not), notify, save the frame to ~/.local/state/dota-accept/.
 - Stays armed after accepting: if someone declines you are back in queue and the
-  next popup is accepted too. Disarms when the match starts (hero selection,
-  reported by Dota's Game State Integration on 127.0.0.1:3291; needs the Dota
-  launch option -gamestateintegration), when Dota exits, or on `dota-accept off`.
+  next popup is accepted too, also after a match that fails to load. Disarms
+  when the match is past loading and picks (pre-game horn phase, reported by
+  Dota's Game State Integration on 127.0.0.1:3291; needs the Dota launch option
+  -gamestateintegration), when Dota exits, or on `dota-accept off`.
 
 Never reads or touches the game: screenshots in, mouse clicks out.
 """
@@ -167,7 +168,9 @@ def gsi(started):
                 state = (json.loads(body).get("map") or {}).get("game_state", "")
             except ValueError:
                 return
-            if state and state != "DOTA_GAMERULES_STATE_INIT":
+            # Loading and hero selection can still fail (someone does not
+            # connect) and put you back in queue; only pre-game is final.
+            if state in ("DOTA_GAMERULES_STATE_PRE_GAME", "DOTA_GAMERULES_STATE_GAME_IN_PROGRESS"):
                 started.set()
 
         def log_message(self, *a):
