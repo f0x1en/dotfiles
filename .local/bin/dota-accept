@@ -8,8 +8,8 @@
 
 While armed: if Dota's window turns urgent (match found while you are
 elsewhere), switch to it and make it fullscreen. While Dota is visible, grab the
-middle of the screen once a second (grim) and look for a filled green
-button-shaped rectangle on a dark dialog. On a hit: click it with sway's seat
+middle of the screen once a second (grim) and look for the ACCEPT
+button that matches a cut-out of the real one. On a hit: click it with sway's seat
 cursor, notify, save the frame to ~/.local/state/dota-accept/, and disarm.
 Also disarms when Dota exits.
 
@@ -17,53 +17,50 @@ Never reads or touches the game: screenshots in, one mouse click out.
 """
 import io, json, os, subprocess, sys, time
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
 
 STATE = os.path.expanduser("~/.local/state/dota-accept")
 REGION = (900, 560)       # width, height of the scanned box around the screen center
+TEMPLATE = os.path.expanduser("~/.local/share/dota-accept/accept.png")  # cut from a 1920x1080 screenshot
+MATCH = 0.8               # correlation needed to click
 
 
 def sh(*cmd):
     return subprocess.run(cmd, capture_output=True, text=True).stdout
 
 
+def z(x):
+    return (x - x.mean()) / (x.std() + 1e-6)
+
+
 def find_button(img):
-    """Return (x, y) of the button center inside img, or None."""
-    a = np.asarray(img.convert("RGB"), dtype=np.int16)
-    r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    mask = (g > 90) & (g > r + 35) & (g > b + 35)
-    # Work on 4x4 cells: a cell counts when most of it is green.
-    h, w = mask.shape[0] // 4 * 4, mask.shape[1] // 4 * 4
-    cells = mask[:h, :w].reshape(h // 4, 4, w // 4, 4).mean(axis=(1, 3)) > 0.5
-    seen = np.zeros_like(cells)
-    best = None
-    for y0, x0 in zip(*np.nonzero(cells)):
-        if seen[y0, x0]:
-            continue
-        stack, pts = [(y0, x0)], []
-        seen[y0, x0] = True
-        while stack:
-            y, x = stack.pop()
-            pts.append((y, x))
-            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
-                if 0 <= ny < cells.shape[0] and 0 <= nx < cells.shape[1] \
-                        and cells[ny, nx] and not seen[ny, nx]:
-                    seen[ny, nx] = True
-                    stack.append((ny, nx))
-        ys, xs = zip(*pts)
-        bw, bh = (max(xs) - min(xs) + 1) * 4, (max(ys) - min(ys) + 1) * 4
-        fill = len(pts) * 16 / (bw * bh)
-        # Button shape: wide, not huge, mostly filled (white text leaves holes).
-        # Dialog check: 20 px bands just above and below are dark (grass is not).
-        top, left = min(ys) * 4, min(xs) * 4
-        lum = a.mean(axis=2)
-        bands = np.concatenate([lum[max(0, top - 24):max(0, top - 4), left:left + bw].ravel(),
-                                lum[top + bh + 4:top + bh + 24, left:left + bw].ravel()])
-        dark = bands.size > 0 and bands.mean() < 70
-        if 120 <= bw <= 520 and 28 <= bh <= 140 and 2.0 <= bw / bh <= 9 and fill >= 0.55 and dark:
-            if best is None or bw * bh > best[2]:
-                best = ((min(xs) * 4 + bw // 2), (min(ys) * 4 + bh // 2), bw * bh)
-    return best[:2] if best else None
+    """Return (x, y) of the ACCEPT button center inside img, or None.
+
+    Compares against a cut-out of the real button (TEMPLATE) with normalized
+    correlation, so brightness and the popup's glow do not matter. Real popups
+    score 0.98-1.0; menus, game and desktop frames scored 0.44 or less.
+    """
+    tpl = np.asarray(Image.open(TEMPLATE).convert("L"), dtype=np.float32)
+    a = np.asarray(img.convert("L"), dtype=np.float32)
+    if a.shape[0] < tpl.shape[0] or a.shape[1] < tpl.shape[1]:
+        return None
+    # Coarse pass on every 4th pixel, then refine around the best spot.
+    t4 = tpl[::4, ::4]
+    w = sliding_window_view(a[::4, ::4], t4.shape)
+    wz = (w - w.mean(axis=(2, 3), keepdims=True)) / (w.std(axis=(2, 3), keepdims=True) + 1e-6)
+    c = (wz * z(t4)).mean(axis=(2, 3))
+    y, x = (v * 4 for v in np.unravel_index(c.argmax(), c.shape))
+    tz, best = z(tpl), (-1.0, 0, 0)
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            yy, xx = y + dy, x + dx
+            if 0 <= yy <= a.shape[0] - tpl.shape[0] and 0 <= xx <= a.shape[1] - tpl.shape[1]:
+                s = float((z(a[yy:yy + tpl.shape[0], xx:xx + tpl.shape[1]]) * tz).mean())
+                best = max(best, (s, xx, yy))
+    if best[0] < MATCH:
+        return None
+    return best[1] + tpl.shape[1] // 2, best[2] + tpl.shape[0] // 2
 
 
 def dota_window(tree):
