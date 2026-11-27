@@ -50,6 +50,8 @@ exec sh -c 'SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/openssh_agent" SSH_ASKPASS="$HOME/.c
 exec udiskie --no-tray
 # Clipboard
 exec wl-paste --watch cliphist store
+# Dota 2: click ACCEPT when a match is found (~/.local/bin/dota-accept)
+exec ~/.local/bin/dota-accept
 # Idle: no idle lock or screen-off (they interrupted long-running work); still lock before suspend.
 # To bring them back, add to the swayidle line: timeout 600 'swaylock -f' timeout 900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"'
 exec swayidle -w before-sleep 'swaylock -f'

@@ -1,0 +1,139 @@
+#!/usr/bin/python3 -I
+"""dota-accept: click Dota 2's green ACCEPT button when a match is found.
+
+Started at login by sway (exec). Idle unless the dota2 process runs.
+While Dota's window is visible, grabs the middle of the screen once a second
+(grim) and looks for a filled green button-shaped rectangle. When found, it
+clicks the middle of it with sway's own seat cursor, notifies, and saves the
+frame to ~/.local/state/dota-accept/ for tuning.
+If Dota sits on another workspace and marks itself urgent, it is focused first.
+
+Never reads or touches the game: screenshots in, one mouse click out.
+Test on an image: dota-accept --test FILE.png
+"""
+import io, json, os, subprocess, sys, time
+import numpy as np
+from PIL import Image
+
+STATE = os.path.expanduser("~/.local/state/dota-accept")
+REGION = (900, 560)       # width, height of the scanned box around the screen center
+COOLDOWN = 15             # seconds without clicks after a click
+
+
+def sh(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True).stdout
+
+
+def find_button(img):
+    """Return (x, y) of the button center inside img, or None."""
+    a = np.asarray(img.convert("RGB"), dtype=np.int16)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    mask = (g > 90) & (g > r + 35) & (g > b + 35)
+    # Work on 4x4 cells: a cell counts when most of it is green.
+    h, w = mask.shape[0] // 4 * 4, mask.shape[1] // 4 * 4
+    cells = mask[:h, :w].reshape(h // 4, 4, w // 4, 4).mean(axis=(1, 3)) > 0.5
+    seen = np.zeros_like(cells)
+    best = None
+    for y0, x0 in zip(*np.nonzero(cells)):
+        if seen[y0, x0]:
+            continue
+        stack, pts = [(y0, x0)], []
+        seen[y0, x0] = True
+        while stack:
+            y, x = stack.pop()
+            pts.append((y, x))
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < cells.shape[0] and 0 <= nx < cells.shape[1] \
+                        and cells[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((ny, nx))
+        ys, xs = zip(*pts)
+        bw, bh = (max(xs) - min(xs) + 1) * 4, (max(ys) - min(ys) + 1) * 4
+        fill = len(pts) * 16 / (bw * bh)
+        # Button shape: wide, not huge, mostly filled (white text leaves holes).
+        # Dialog check: 20 px bands just above and below are dark (grass is not).
+        top, left = min(ys) * 4, min(xs) * 4
+        lum = a.mean(axis=2)
+        bands = np.concatenate([lum[max(0, top - 24):max(0, top - 4), left:left + bw].ravel(),
+                                lum[top + bh + 4:top + bh + 24, left:left + bw].ravel()])
+        dark = bands.size > 0 and bands.mean() < 70
+        if 120 <= bw <= 520 and 28 <= bh <= 140 and 2.0 <= bw / bh <= 9 and fill >= 0.55 and dark:
+            if best is None or bw * bh > best[2]:
+                best = ((min(xs) * 4 + bw // 2), (min(ys) * 4 + bh // 2), bw * bh)
+    return best[:2] if best else None
+
+
+def dota_window(tree):
+    stack = [tree]
+    while stack:
+        n = stack.pop()
+        if (n.get("window_properties") or {}).get("class") == "dota2":
+            return n
+        stack += n.get("nodes", []) + n.get("floating_nodes", [])
+    return None
+
+
+def visible(tree, win):
+    ws = json.loads(sh("swaymsg", "-t", "get_workspaces"))
+    shown = {w["name"] for w in ws if w["visible"]}
+    def walk(n, wsname):
+        if n.get("type") == "workspace":
+            wsname = n["name"]
+        if n.get("id") == win["id"]:
+            return wsname in shown
+        return any(walk(c, wsname) for c in n.get("nodes", []) + n.get("floating_nodes", []))
+    return walk(tree, None)
+
+
+def tick():
+    tree = json.loads(sh("swaymsg", "-t", "get_tree"))
+    win = dota_window(tree)
+    if not win:
+        return False
+    if not visible(tree, win):
+        if not win.get("urgent"):
+            return False
+        sh("swaymsg", f"[con_id={win['id']}] focus")
+        time.sleep(0.5)
+    out = next(o for o in json.loads(sh("swaymsg", "-t", "get_outputs")) if o["focused"])
+    r = out["rect"]
+    w, h = min(REGION[0], r["width"]), min(REGION[1], r["height"])
+    x0, y0 = r["x"] + (r["width"] - w) // 2, r["y"] + (r["height"] - h) // 2
+    png = subprocess.run(["grim", "-g", f"{x0},{y0} {w}x{h}", "-"], capture_output=True).stdout
+    if not png:
+        return False
+    img = Image.open(io.BytesIO(png))
+    hit = find_button(img)
+    if not hit:
+        return False
+    cx, cy = x0 + hit[0], y0 + hit[1]
+    sh("swaymsg", f"seat seat0 cursor set {cx} {cy}")
+    sh("swaymsg", "seat seat0 cursor press button1")
+    time.sleep(0.05)
+    sh("swaymsg", "seat seat0 cursor release button1")
+    os.makedirs(STATE, exist_ok=True)
+    img.save(os.path.join(STATE, "last-click.png"))
+    with open(os.path.join(STATE, "log"), "a") as f:
+        f.write(f"{time.strftime('%F %T')} clicked {cx},{cy}\n")
+    sh("notify-send", "-a", "dota-accept", "Dota 2", "Match accepted")
+    return True
+
+
+def main():
+    if sys.argv[1:2] == ["--test"]:
+        print(find_button(Image.open(sys.argv[2])))
+        return
+    while True:
+        if subprocess.run(["pgrep", "-x", "dota2"], capture_output=True).returncode:
+            time.sleep(5)
+            continue
+        try:
+            clicked = tick()
+        except Exception as e:  # keep running; sway may be mid-reload
+            print("dota-accept:", e, file=sys.stderr)
+            clicked = False
+        time.sleep(COOLDOWN if clicked else 1)
+
+
+if __name__ == "__main__":
+    main()
