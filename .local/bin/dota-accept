@@ -4,14 +4,14 @@
   dota-accept          arm it in the background (run it when you start searching)
   dota-accept off      disarm
   dota-accept status   armed or not
-  dota-accept --test FILE.png [SCALE]   run the detector on a screenshot
+  dota-accept --test FILE.png [SCALE...]   run the detector on a screenshot
 
 While armed: if Dota's window turns urgent (match found while you are
-elsewhere), switch to it. Works fullscreen or tiled: it searches Dota's own
-window and shrinks the button cut-out to the window's size. While Dota is visible, grab the
-middle of the screen once a second (grim) and look for the ACCEPT
-button that matches a cut-out of the real one. On a hit: click it with sway's seat
-cursor, check that the button is gone (clicks again, up to 5 times, if not),
+elsewhere), switch to it. While Dota is visible, grab its whole window twice
+a second (grim) and look for the ACCEPT button, comparing against a cut-out of
+the real one at the window's scale (fullscreen, tiled or floating, any size).
+On a hit: click it with sway's seat cursor, check that the button is gone
+(clicks again, up to 5 times, if not),
 notify, save the frame to ~/.local/state/dota-accept/, and disarm.
 Also disarms when Dota exits.
 
@@ -23,7 +23,6 @@ from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
 
 STATE = os.path.expanduser("~/.local/state/dota-accept")
-REGION = (900, 560)       # width, height of the scanned box around the screen center
 TEMPLATE = os.path.expanduser("~/.local/share/dota-accept/accept.png")  # cut from a 1920x1080 screenshot
 MATCH = 0.8               # correlation needed to click
 
@@ -36,48 +35,49 @@ def z(x):
     return (x - x.mean()) / (x.std() + 1e-6)
 
 
-def find_button(img, scale=1.0):
+def find_button(img, scales=(1.0,)):
     """Return (x, y) of the ACCEPT button center inside img, or None.
 
     Compares against a cut-out of the real button (TEMPLATE) with normalized
     correlation, so brightness and the popup's glow do not matter. Real popups
-    score 0.98-1.0; menus, game and desktop frames scored 0.44 or less.
-    scale: Dota window height / 1080. Dota shrinks its UI with the window,
-    so the cut-out is shrunk the same way; +-3% is tried for rounding.
+    score 0.98-1.0; menus, game and desktop frames scored well under MATCH.
+    Dota shrinks its UI with its window, so the cut-out is tried at each scale.
     """
+    a = np.asarray(img.convert("L"), dtype=np.float32)
+    base = Image.open(TEMPLATE).convert("L")
     best = None
-    for k in (1.0, 0.97, 1.03):
-        hit = match(img, scale * k)
+    for sc in sorted(set(round(x, 2) for x in scales)):
+        t = base if sc == 1 else base.resize((max(8, round(base.width * sc)),
+                                             max(4, round(base.height * sc))), Image.LANCZOS)
+        hit = match(a, np.asarray(t, dtype=np.float32))
         if hit and (best is None or hit[0] > best[0]):
             best = hit
-    return best[1:] if best else None
+    return best[1:] if best and best[0] >= MATCH else None
 
 
-def match(img, scale):
-    """(score, x, y) of the best template spot at this scale, or None."""
-    t = Image.open(TEMPLATE).convert("L")
-    if abs(scale - 1) > 0.001:
-        t = t.resize((round(t.width * scale), round(t.height * scale)), Image.LANCZOS)
-    tpl = np.asarray(t, dtype=np.float32)
-    a = np.asarray(img.convert("L"), dtype=np.float32)
-    if a.shape[0] < tpl.shape[0] or a.shape[1] < tpl.shape[1]:
+def match(a, tpl):
+    """(score, center x, center y) of the best spot for tpl in a, or None."""
+    th, tw = tpl.shape
+    if a.shape[0] < th or a.shape[1] < tw:
         return None
-    # Coarse pass on every 4th pixel, then refine around the best spot.
-    t4 = tpl[::4, ::4]
-    w = sliding_window_view(a[::4, ::4], t4.shape)
-    wz = (w - w.mean(axis=(2, 3), keepdims=True)) / (w.std(axis=(2, 3), keepdims=True) + 1e-6)
-    c = (wz * z(t4)).mean(axis=(2, 3))
-    y, x = (v * 4 for v in np.unravel_index(c.argmax(), c.shape))
-    tz, best = z(tpl), (-1.0, 0, 0)
-    for dy in range(-4, 5):
-        for dx in range(-4, 5):
-            yy, xx = y + dy, x + dx
-            if 0 <= yy <= a.shape[0] - tpl.shape[0] and 0 <= xx <= a.shape[1] - tpl.shape[1]:
-                s = float((z(a[yy:yy + tpl.shape[0], xx:xx + tpl.shape[1]]) * tz).mean())
-                best = max(best, (s, xx, yy))
-    if best[0] < MATCH:
-        return None
-    return best[0], best[1] + tpl.shape[1] // 2, best[2] + tpl.shape[0] // 2
+    # Rough pass on every step-th pixel; keep the 3 best spots.
+    step = 8 if th >= 40 else 4 if th >= 16 else 2
+    ts = tpl[::step, ::step]
+    win = sliding_window_view(a[::step, ::step], ts.shape)
+    wz = (win - win.mean(axis=(2, 3), keepdims=True)) / (win.std(axis=(2, 3), keepdims=True) + 1e-6)
+    c = (wz * z(ts)).mean(axis=(2, 3))
+    tz, best = z(tpl), None
+    for i in np.argsort(c, axis=None)[-3:]:
+        y, x = (v * step for v in np.unravel_index(i, c.shape))
+        # Full-resolution check around that spot.
+        for dy in range(-step, step + 1):
+            for dx in range(-step, step + 1):
+                yy, xx = y + dy, x + dx
+                if 0 <= yy <= a.shape[0] - th and 0 <= xx <= a.shape[1] - tw:
+                    sc = float((z(a[yy:yy + th, xx:xx + tw]) * tz).mean())
+                    if best is None or sc > best[0]:
+                        best = (sc, xx + tw // 2, yy + th // 2)
+    return best
 
 
 def dota_window(tree):
@@ -117,15 +117,15 @@ def tick():
     # Dota's picture on screen: container rect plus the window's offset in it.
     r, wr = win["rect"], win["window_rect"]
     dx, dy, dw, dh = r["x"] + wr["x"], r["y"] + wr["y"], wr["width"], wr["height"]
-    scale = dh / 1080
-    w, h = min(round(REGION[0] * scale), dw), min(round(REGION[1] * scale), dh)
-    x0, y0 = dx + (dw - w) // 2, dy + (dh - h) // 2
+    # Whole window. Dota fits its 1920x1080 UI by height or by width.
+    x0, y0, w, h = dx, dy, dw, dh
+    scales = [b * k for b in (dh / 1080, dw / 1920) for k in (0.95, 1.0, 1.05)]
     def grab():
         png = subprocess.run(["grim", "-g", f"{x0},{y0} {w}x{h}", "-"], capture_output=True).stdout
         if not png:
             return None, None
         img = Image.open(io.BytesIO(png))
-        return img, find_button(img, scale)
+        return img, find_button(img, scales)
 
     img, hit = grab()
     if not hit:
@@ -176,7 +176,7 @@ def run():
 def main():
     arg = sys.argv[1] if len(sys.argv) > 1 else "on"
     if arg == "--test":
-        print(find_button(Image.open(sys.argv[2]), float(sys.argv[3]) if len(sys.argv) > 3 else 1.0))
+        print(find_button(Image.open(sys.argv[2]), [float(x) for x in sys.argv[3:]] or [1.0]))
     elif arg == "run":
         run()
     elif arg == "off":
