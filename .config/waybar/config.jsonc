@@ -20,7 +20,6 @@
         "group/time"
     ],
     "network": {
-        "interface": "wlp*",
         "format-wifi": "<span color='#6B6B6B' size='large'>{icon}</span> {essid}",
         "format-icons": [
             "󰤟",
@@ -32,6 +31,7 @@
         "format-disconnected": "<span color='#CC5F5A' size='large'>󰤮</span> <span color='#CC5F5A'>offline</span>",
         "format-disabled": "<span color='#5A5A5A' size='large'>󰤮</span> off",
         "tooltip-format-wifi": "{essid}  {signalStrength}%  {frequency} GHz\n{ipaddr}/{cidr} via {gwaddr}",
+        "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr} via {gwaddr}",
         "tooltip-format-disconnected": "offline",
         "max-length": 24,
         "on-click": "~/.config/sway/scripts/tui-toggle wlctl wlctl",
