@@ -100,11 +100,13 @@ firefox-esr
 scrcpy
 adb
 
-# Document toolchain used by mdpdf
+# Document toolchain used by mdpdf and pdfmd
 pandoc
 texlive-xetex
 texlive-lang-arabic
 fonts-hosny-amiri
+ocrmypdf
+tesseract-ocr-fas
 
 # RISC-V helpers used by rv
 gcc-riscv64-linux-gnu

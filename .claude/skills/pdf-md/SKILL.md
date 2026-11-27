@@ -32,7 +32,9 @@ pdfmd [--ocr] input.pdf [output.md]   # output '-' = stdout
 - Bidi control marks stay in the output on purpose: they place punctuation and numbers correctly.
 - Warning `N unreadable glyphs (broken font map)` means the PDF fonts have no Unicode map
   (common in Persian PDFs printed from browsers). Text extraction cannot fix it. Use `--ocr`.
-- `--ocr` needs `ocrmypdf` and `tesseract-ocr-fas` (apt).
+- `--ocr` uses `ocrmypdf` + `tesseract-ocr-fas` (installed). Languages: `PDFMD_LANG`, default `fas+eng`.
+  `fas+eng` keeps English right but misreads some Persian words as Latin junk.
+  `PDFMD_LANG=fas pdfmd --ocr ...` reads Persian better but breaks English words (`C++`, `PDF`).
 
 ## Homework convention
 

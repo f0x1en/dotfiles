@@ -5,7 +5,8 @@
 # Bidi marks from pdftotext are kept: they place punctuation and numbers
 # correctly. NFKC turns Arabic/Persian presentation-form
 # glyphs back into normal letters.
-# --ocr: re-OCR every page first with ocrmypdf (fas+eng). Use it for scans and
+# --ocr: re-OCR every page first with ocrmypdf. Languages: $PDFMD_LANG
+# (default fas+eng; PDFMD_LANG=fas reads Persian better but breaks English words). Use it for scans and
 # for PDFs whose fonts have broken Unicode maps (output full of U+FFFD).
 set -eu
 
@@ -22,7 +23,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 if [ $ocr = 1 ]; then
-    ocrmypdf -q -l fas+eng --force-ocr --output-type pdf "$in" "$tmp/ocr.pdf"
+    ocrmypdf -q -l "${PDFMD_LANG:-fas+eng}" --force-ocr --output-type pdf "$in" "$tmp/ocr.pdf"
     in=$tmp/ocr.pdf
 fi
 
