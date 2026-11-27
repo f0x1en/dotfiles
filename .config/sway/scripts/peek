@@ -29,7 +29,12 @@ back() {
   pkill -f "^/bin/sh .*/peek watch$"
   old=$(swaymsg -t get_marks | jq -r '.[] | select(startswith("_peek"))' | head -n1)
   [ -z "$old" ] && return
-  swaymsg "[con_mark=\"^$old\$\"] opacity 1, floating disable, move container to workspace number ${old#_peek}, unmark $old" >/dev/null
+  cur=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .num')
+  # Focus it on its home workspace, then come back, so that workspace's
+  # last-focused window stays this one (next peek and mod+N pick it again).
+  ret=""
+  [ "$cur" != "${old#_peek}" ] && ret="; workspace number $cur"
+  swaymsg "[con_mark=\"^$old\$\"] opacity 1, floating disable, move container to workspace number ${old#_peek}, unmark $old, focus$ret" >/dev/null
   echo "${old#_peek}"
 }
 
