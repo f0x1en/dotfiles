@@ -1,0 +1,13 @@
+# Campbell palette (~/README.md "Palette")
+[theme]
+name = "campbell"
+
+[colors]
+Base = "#B8B8B8"
+Title = "#D4D4D4"
+Important = "#D1A34D"
+Guidance = "#6B6B6B"
+Annotation = "#6B6B6B"
+AlertInfo = "#7BAA62"
+AlertWarn = "#D1A34D"
+AlertError = "#CC5F5A"

@@ -30,9 +30,8 @@ fi
 # ── Vi mode ──────────────────────────────────────────────────
 bindkey -v
 
-# jk → normal mode, Ctrl-R → history search
+# jk → normal mode (Ctrl-R → atuin, see Tools)
 bindkey -M viins 'jk' vi-cmd-mode
-bindkey -M viins '^R' history-incremental-pattern-search-backward
 
 # Backspace (^? and ^H) deletes freely in insert mode
 bindkey -M viins '^?' backward-delete-char
@@ -214,6 +213,8 @@ alias ch='cliphist list | fzf --no-sort --bind "j:down,k:up" | cliphist decode |
 
 # ── Tools ────────────────────────────────────────────────────
 eval "$(zoxide init zsh)"
+# history search: Ctrl-R, Ctrl-R again cycles global/host/session/directory
+eval "$(atuin init zsh --disable-up-arrow)"
 
 # ── Local overrides / secrets (keep out of git) ──────────────
 if [[ -f "$HOME/.zshrc.local" ]]; then

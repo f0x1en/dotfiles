@@ -47,6 +47,7 @@ neovim
 tmux
 fzf
 zoxide
+atuin
 jq
 ripgrep
 fd-find

@@ -45,7 +45,7 @@ tree. No symlinks are used; files are managed in place.
 | Desktop | `.config/mako/`, `.config/fuzzel/`, `.config/mimeapps.list`, `.config/user-dirs.dirs` |
 | GTK | `.gtkrc-2.0`, `.config/gtk-3.0/settings.ini`, `.config/gtk-4.0/settings.ini` |
 | Editor | `.config/nvim/` |
-| CLI tools | `.config/btop/`, `.config/tealdeer/`, `.config/yazi/` |
+| CLI tools | `.config/atuin/`, `.config/btop/`, `.config/tealdeer/`, `.config/yazi/` |
 | Documents | `.config/pandoc/`, `.config/zathura/` |
 | Services | `.config/NetworkManager/dispatcher.d/90-netpref` |
 | Scripts | `.local/bin/clipmenu`, `.local/bin/download-batch`, `.local/bin/netpref` |
@@ -76,7 +76,7 @@ and numbers. Blue, purple and cyan exist only as quiet terminal slots in
 `.config/kitty/themes/campbell.conf` for programs like `ls`; the UI never uses them.
 
 Used by kitty, nvim, Sway, Waybar, mako, fuzzel, wob, swaylock, GTK, tmux, btop,
-fzf and zathura. The values are repeated by hand in each config.
+fzf, atuin and zathura. The values are repeated by hand in each config.
 
 GTK uses Adwaita-dark recolored by `.config/gtk-3.0/gtk.css` and
 `.config/gtk-4.0/gtk.css`, with Papirus-Dark icons and the Adwaita cursor.
