@@ -1,5 +1,5 @@
 # atuin: shell history search (Ctrl-R). Defaults kept except below.
-filter_mode = "directory"
+filter_mode = "global"
 style = "compact"
 inline_height = 20
 update_check = false
