@@ -1,0 +1,7 @@
+#!/bin/sh
+# term-here: open kitty in the cwd of the focused kitty window (mod+Return).
+# Uses kitty remote control (listen_on unix:/tmp/kitty -> /tmp/kitty-PID).
+# Falls back to a plain kitty when the focused window is not kitty.
+pid=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true and .app_id? == "kitty") | .pid')
+[ -n "$pid" ] && kitty @ --to "unix:/tmp/kitty-$pid" launch --type=os-window --cwd=current >/dev/null 2>&1 && exit
+exec kitty

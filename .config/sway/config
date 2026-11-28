@@ -65,7 +65,7 @@ bindsym --to-code $mod+Shift+p exec ~/.config/sway/scripts/power-menu
 # Help menu
 bindsym --to-code $mod+slash exec kitty --title sway-help ~/.config/sway/scripts/help-menu
 # Terminal
-bindsym --to-code $mod+Return exec $term
+bindsym --to-code $mod+Return exec ~/.config/sway/scripts/term-here
 # Browser
 bindsym --to-code $mod+w exec $browser
 # Launcher
