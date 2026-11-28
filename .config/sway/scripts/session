@@ -1,0 +1,50 @@
+#!/bin/sh
+# session save|restore: keep kitty windows across logout and reboot.
+# save: writes each tiled kitty OS window (not floating TUIs, not the scratchpad)
+#   to $dir/<workspace>_<n>.kitty with kitty's save_as_session. It matches a sway
+#   window to a kitty OS window by pid and title (title = active tab title).
+#   Running programs (nvim, claude, ...) are saved too and start again on restore.
+# restore: opens each file with kitty --session on its old workspace.
+# Sway runs restore at login, then save every 2 minutes; power-menu saves before logout.
+dir=${XDG_STATE_HOME:-$HOME/.local/state}/sway-session
+
+save() {
+  tmp=$dir.new
+  rm -rf "$tmp" && mkdir -p "$tmp" || exit 1
+  swaymsg -t get_tree | jq -r '
+    .. | select(.type? == "workspace" and .name != "__i3_scratch") | .name as $ws
+    | .nodes[]? | .. | select(.app_id? == "kitty") | [$ws, .pid, .name] | @tsv' |
+  while IFS="$(printf '\t')" read -r ws pid title; do
+    sock=unix:/tmp/kitty-$pid
+    used=$tmp/.used-$pid
+    touch "$used"
+    # First OS window of this kitty with this title that is not saved yet.
+    ids=$(kitty @ --to "$sock" ls 2>/dev/null | jq -r --arg t "$title" --rawfile u "$used" '
+      [.[] | select(([.tabs[] | select(.is_active) | .title][0]) == $t)
+           | (.id | tostring) as $i | select($u | split("\n") | index($i) | not)][0]
+      | select(.) | "\(.id) \([.tabs[].windows[].id | "id:\(.)"] | join(" or "))"')
+    [ -n "$ids" ] || continue
+    echo "${ids%% *}" >> "$used"
+    n=$(ls "$tmp" | grep -c "^${ws}_")
+    kitty @ --to "$sock" action save_as_session --save-only --use-foreground-process \
+      "--match=${ids#* }" "$tmp/${ws}_$n.kitty" >/dev/null 2>&1
+  done
+  rm -f "$tmp"/.used-*
+  rm -rf "$dir" && mv "$tmp" "$dir"
+}
+
+restore() {
+  back=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .name')
+  for f in "$dir"/*.kitty; do
+    [ -e "$f" ] || return 0
+    ws=$(basename "$f"); ws=${ws%_*}
+    swaymsg "workspace \"$ws\"; exec kitty --session '$f'" >/dev/null
+  done
+  swaymsg "workspace \"$back\"" >/dev/null
+}
+
+case $1 in
+  save) save ;;
+  restore) restore ;;
+  *) echo "usage: session save|restore" >&2; exit 2 ;;
+esac

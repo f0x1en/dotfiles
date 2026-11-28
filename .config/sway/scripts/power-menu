@@ -9,6 +9,11 @@ choice=$(printf '%s\n' \
     'Shutdown' |
     fuzzel --dmenu --prompt='Power: ')
 
+# Save kitty windows so the next login reopens them (sway/scripts/session).
+case "$choice" in
+    Logout|Reboot|Shutdown) ~/.config/sway/scripts/session save ;;
+esac
+
 case "$choice" in
     Lock)
         swaylock
