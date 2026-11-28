@@ -2,6 +2,7 @@
 filter_mode = "global"
 style = "compact"
 inline_height = 20
+keymap_mode = "auto"
 update_check = false
 
 [theme]
